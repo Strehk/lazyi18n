@@ -1,0 +1,21 @@
+{
+  "auth": {
+    "login": {
+      "title": "Sign In",
+      "email": "Email Address",
+      "password": "Passwordasdfasdf asdfasd asdf asdf",
+      "forgot": "Forgot Password?"
+    },
+    "signup": {
+      "title": "Create Account"
+    }
+  },
+  "dashboard": {
+    "welcome": "Welcome",
+    "settings": "Settings"
+  },
+  "errors": {
+    "password_short": "Password must be at least 8 characters",
+    "invalid_email": "Test"
+  }
+}
