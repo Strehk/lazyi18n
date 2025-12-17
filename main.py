@@ -822,13 +822,13 @@ class ValuesPane(Static):
         """Render values for selected key."""
         if not self.selected_key:
             return (
-                " #                           ###   #    #####         \n"
+                "[$primary] #                           ###   #    #####         \n"
                 " #         ##   ###### #   #  #   ##   #     # #    # \n"
                 " #        #  #      #   # #   #  # #   #     # ##   # \n"
                 " #       #    #    #     #    #    #    #####  # #  # \n"
                 " #       ######   #      #    #    #   #     # #  # # \n"
                 " #       #    #  #       #    #    #   #     # #   ## \n"
-                " ####### #    # ######   #   ### #####  #####  #    # \n"
+                " ####### #    # ######   #   ### #####  #####  #    # \n[/]"
                 "\n\n"                                                                                        
                 "[dim]Select a key from the tree[/]\n\n"
                 "[bold]Keyboard Shortcuts:[/]\n"
@@ -888,35 +888,64 @@ class StatusDisplay(Static):
         """Render comprehensive status info."""
         coverage = self.project.get_coverage()
         gaps = self.project.get_gaps()
-        total_keys = len(self.project.get_all_keys())
-        missing_count = len(gaps)
+        all_keys = self.project.get_all_keys()
+        total_keys = len(all_keys)
+        locales = self.project.get_locales()
         
-        lines = [
-            f"[bold cyan]Status[/]",
-            f"  Keys: {total_keys} | Missing: {missing_count}",
-        ]
+        # Calculate stats
+        fully_translated = total_keys - len(gaps)
         
-        # Coverage per locale with progress bar
-        if coverage:
-            for locale, pct in sorted(coverage.items()):
-                bar = "█" * int(pct / 10) + "░" * (10 - int(pct / 10))
-                lines.append(f"  {locale}: {bar} {pct:.0f}%")
+        # Calculate missing per locale
+        missing_per_locale = {loc: 0 for loc in locales}
+        for gap in gaps.values():
+            for loc in gap.missing_in:
+                missing_per_locale[loc] += 1
         
-        # Unsaved status
-        if self.unsaved:
-            unsaved_str = ", ".join(self.unsaved)
-            lines.append(f"[yellow]  Unsaved:[/] {unsaved_str}")
-        else:
-            lines.append("[green] All saved[/]")
+        lines = []
         
-        # Action feedback
-        if self.action != "Ready":
-            lines.append(f"[dim]{self.action}[/]")
-        
-        # Key hints
+        # 1. Project Overview
+        lines.append(f"[bold]Project Overview[/]")
+        lines.append(f"  Keys: [cyan]{total_keys}[/] | Locales: [cyan]{len(locales)}[/] ({', '.join(locales)})")
+        lines.append(f"  Fully Translated: [green]{fully_translated}[/] | Partial: [yellow]{len(gaps)}[/]")
         lines.append("")
-        lines.append("[dim bold]Key Bindings[/]")
-        lines.append("[dim]↑/↓ nav | e edit | / search | n new | b bulk | s save | r reload | ? help | q quit[/]")
+        
+        # 2. Locale Health
+        lines.append(f"[bold]Locale Health[/]")
+        if coverage:
+            for locale in locales:
+                pct = coverage.get(locale, 0)
+                missing = missing_per_locale.get(locale, 0)
+                present = total_keys - missing
+                
+                # Color based on percentage
+                color = "green" if pct == 100 else "yellow" if pct >= 80 else "red"
+                
+                # Progress bar (20 chars wide)
+                bar_width = 20
+                filled = int(pct / 100 * bar_width)
+                bar = "█" * filled + "░" * (bar_width - filled)
+                
+                lines.append(f"  {locale:<5} [{color}]{bar}[/] {pct:>5.1f}%  ([dim]{present}/{total_keys}[/])")
+        lines.append("")
+
+        # 3. System Status
+        lines.append(f"[bold]System[/]")
+        
+        # Unsaved changes
+        changed_keys = self.project.get_changed_keys()
+        if changed_keys:
+            lines.append(f"  [yellow]●[/] Unsaved Changes: [yellow]{len(changed_keys)}[/] keys modified")
+            lines.append(f"      Locales: {', '.join(self.unsaved)}")
+        else:
+            lines.append("  [green]●[/] All changes saved")
+            
+        # Last Action
+        if self.action != "Ready":
+             lines.append(f"  [blue]ℹ[/] {self.action}")
+             
+        # Key hints (compact)
+        lines.append("")
+        lines.append("[dim]e:edit /:search n:new b:bulk s:save r:reload q:quit[/]")
         
         return "\n".join(lines)
     
