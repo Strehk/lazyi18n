@@ -562,6 +562,71 @@ class DeleteConfirmScreen(Screen):
         self.app.pop_screen()
 
 
+class QuitConfirmScreen(Screen):
+    """Modal screen for confirming quit with unsaved changes."""
+    
+    BINDINGS = [
+        ("escape", "cancel", "Cancel"),
+        ("enter", "confirm", "Confirm"),
+    ]
+    
+    CSS = """
+    QuitConfirmScreen {
+        align: center middle;
+        background: $background 80%;
+    }
+    
+    #quit-dialog {
+        width: 60;
+        height: auto;
+        border: thick $error;
+        background: $surface;
+        padding: 2;
+    }
+    
+    #quit-title {
+        text-align: center;
+        text-style: bold;
+        margin-bottom: 1;
+        color: $error;
+    }
+    
+    #quit-warning {
+        color: $text;
+        margin: 1 0;
+        text-align: center;
+    }
+    
+    #quit-help {
+        dock: bottom;
+        text-align: center;
+        color: $text-muted;
+        margin-top: 1;
+    }
+    """
+    
+    def compose(self) -> ComposeResult:
+        """Compose the quit confirmation dialog."""
+        with VerticalScroll(id="quit-dialog"):
+            yield Label("Unsaved Changes", id="quit-title")
+            yield Label(
+                "You have unsaved changes. Are you sure you want to quit?",
+                id="quit-warning"
+            )
+            yield Label(
+                "[bold red]Enter[/] Quit without saving | [Esc] Cancel",
+                id="quit-help"
+            )
+    
+    def action_confirm(self) -> None:
+        """Confirm quit."""
+        self.app.exit()
+    
+    def action_cancel(self) -> None:
+        """Cancel quit."""
+        self.app.pop_screen()
+
+
 class TreePane(Static):
     """Left pane with translation key tree."""
     
@@ -592,7 +657,21 @@ class TreePane(Static):
         
         # Filter keys by search term
         if filter_term:
-            keys = [k for k in keys if filter_term.lower() in k.lower()]
+            term = filter_term.lower()
+            filtered_keys = []
+            for key in keys:
+                # Check key match
+                if term in key.lower():
+                    filtered_keys.append(key)
+                    continue
+                
+                # Check value match in any locale
+                for locale in self.project.get_locales():
+                    val = self.project.get_key_value(locale, key)
+                    if val and term in str(val).lower():
+                        filtered_keys.append(key)
+                        break
+            keys = filtered_keys
         
         # Group by category (first part before dot) and identify top-level keys
         categories = {}
@@ -968,6 +1047,16 @@ class LazyI18nApp(App):
             return
         if self.values_pane.selected_key:
             self.push_screen(DeleteConfirmScreen(self.project, self.values_pane.selected_key))
+
+    def action_quit(self) -> None:
+        """Quit the application."""
+        if self.is_searching:
+            return
+            
+        if self.project.has_unsaved_changes():
+            self.push_screen(QuitConfirmScreen())
+        else:
+            self.exit()
 
     def action_save(self) -> None:
         """Save changes to disk and refresh UI."""
