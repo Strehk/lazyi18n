@@ -1,0 +1,80 @@
+name: Nightly Release
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  nightly:
+    name: Build and Publish Nightly
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+
+    - name: Install build tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install build
+
+    - name: Generate Nightly Version
+      run: |
+        # Extract current version from pyproject.toml using Python
+        CURRENT_VERSION=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")
+        
+        # Get current date
+        DATE=$(date +'%Y%m%d')
+        
+        # Construct nightly version: <current_version>.dev<date>
+        # Example: 0.1.1.dev20231217
+        VERSION="${CURRENT_VERSION}.dev${DATE}"
+        
+        echo "Detected base version: $CURRENT_VERSION"
+        echo "Generated nightly version: $VERSION"
+        echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+    - name: Update pyproject.toml version
+      run: |
+        # Update the version in pyproject.toml
+        python -c "import sys, re; content = open('pyproject.toml').read(); open('pyproject.toml', 'w').write(re.sub(r'^version\s*=\s*\".*\"', f'version = \"{sys.argv[1]}\"', content, flags=re.MULTILINE))" "$VERSION"
+        
+        # Verify the change
+        grep "^version" pyproject.toml
+
+    - name: Build package
+      run: python -m build
+
+    - name: Delete previous nightly release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh release delete nightly --cleanup-tag --yes || true
+
+    - name: Create Nightly Release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh release create nightly dist/* \
+          --title "Nightly Build" \
+          --notes "Nightly build based on commit $(git rev-parse --short HEAD) generated on $(date)" \
+          --prerelease
+
+    - name: Bump Homebrew formula
+      uses: mishig25/action-homebrew-bump-formula@v3
+      with:
+        formula-name: lazyi18n-nightly
+        homebrew-tap: strehk/homebrew-lazyi18n
+        download-url: https://github.com/${{ github.repository }}/releases/download/nightly/lazyi18n-${{ env.VERSION }}.tar.gz
+      env:
+        COMMITTER_TOKEN: ${{ secrets.COMMITTER_TOKEN }}
