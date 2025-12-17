@@ -166,7 +166,8 @@ class EditScreen(Screen):
                 pass
     
     def action_save(self) -> None:
-        """Save all changes and close."""
+        """Save all changes to memory and close."""
+        # Read current values from inputs
         for locale, input_widget in self.inputs.items():
             new_value = input_widget.value.strip()
             if new_value:
@@ -174,9 +175,23 @@ class EditScreen(Screen):
             else:
                 # Empty field deletes the translation for that locale
                 self.project.delete_key_value(locale, self.key)
-        # Clear any live preview
-        if hasattr(self.app, "values_pane") and self.app.values_pane:
+        
+        # Mark this key as edited for the tree indicator
+        if hasattr(self.app, 'edited_key'):
+            self.app.edited_key = self.key
+        
+        # Update the values pane and tree immediately
+        if hasattr(self.app, 'values_pane') and self.app.values_pane:
             self.app.values_pane.clear_preview()
+            self.app.values_pane.refresh()
+        
+        if hasattr(self.app, 'tree_pane') and self.app.tree_pane:
+            self.app.tree_pane.rebuild(self.app.tree_pane.search_term)
+        
+        if hasattr(self.app, 'status_pane') and self.app.status_pane:
+            self.app.status_pane.update_status()
+        
+        # Close the modal
         self.app.pop_screen()
     
     def action_cancel(self) -> None:
@@ -185,17 +200,6 @@ class EditScreen(Screen):
         if hasattr(self.app, "values_pane") and self.app.values_pane:
             self.app.values_pane.clear_preview()
         self.app.pop_screen()
-
-    def on_input_changed(self, event: Input.Changed) -> None:
-        """Update live preview in the values pane while editing."""
-        # Collect current input values per locale
-        current_values = {}
-        for locale, input_widget in self.inputs.items():
-            val = (input_widget.value or "").strip()
-            current_values[locale] = val
-        # Push preview to ValuesPane
-        if hasattr(self.app, "values_pane") and self.app.values_pane:
-            self.app.values_pane.set_preview(self.key, current_values)
 
 
 class NewKeyScreen(Screen):
@@ -495,6 +499,10 @@ class TreePane(Static):
         root.data = None
         gaps = self.project.get_gaps()
         keys = self.project.get_all_keys()
+        unsaved_locales = self.project.get_unsaved_locales()
+        
+        # Get the recently edited key from the app
+        edited_key = getattr(self.app, 'edited_key', None)
         
         # Filter keys by search term
         if filter_term:
@@ -521,7 +529,13 @@ class TreePane(Static):
             for key in sorted(categories[category]):
                 label = key.split(".", 1)[1] if "." in key else key
                 has_gap = key in gaps
-                if has_gap:
+                # Show pencil only if this is the key that was just edited and locales are unsaved
+                has_unsaved = key == edited_key and unsaved_locales
+                
+                # Mark with status: unsaved, gap, or complete
+                if has_unsaved:
+                    label = f"✏️  {label}"
+                elif has_gap:
                     label = f"⚠️  {label}"
                 else:
                     label = f"✓ {label}"
@@ -613,28 +627,46 @@ class StatusPane(Static):
         self.project = project
     
     def render(self) -> str:
-        """Render status bar."""
-        hints_line = (
-            "[dim]Keys: ↑/↓ navigate | e edit | / search | n new | b bulk | s save | r reload | ? help | q quit[/]"
-        )
+        """Render comprehensive status info."""
         if self.search_mode:
             return (
-                f"[bold yellow]SEARCH:[/] {self.search_term}_ | [dim]ESC to cancel | ENTER to finish[/]" 
-                + "\n" + hints_line
+                f"[bold yellow]🔍 SEARCH:[/] [cyan]{self.search_term}[/]_ \n"
+                f"[dim]ESC cancel | ENTER finish[/]"
             )
         
         coverage = self.project.get_coverage()
-        coverage_str = " | ".join(
-            f"{l}: {c:.0f}%" for l, c in coverage.items()
-        )
-        unsaved_str = ", ".join(self.unsaved) if self.unsaved else "none"
+        gaps = self.project.get_gaps()
+        total_keys = len(self.project.get_all_keys())
+        missing_count = len(gaps)
         
-        status_line = (
-            f"Coverage: {coverage_str} | "
-            f"Unsaved: {unsaved_str} | "
-            f"Action: {self.action}"
-        )
-        return status_line + "\n" + hints_line
+        lines = [
+            f"[bold cyan]Status[/]",
+            f"  Keys: {total_keys} | Missing: {missing_count}",
+        ]
+        
+        # Coverage per locale with progress bar
+        if coverage:
+            for locale, pct in sorted(coverage.items()):
+                bar = "█" * int(pct / 10) + "░" * (10 - int(pct / 10))
+                lines.append(f"  {locale}: {bar} {pct:.0f}%")
+        
+        # Unsaved status
+        if self.unsaved:
+            unsaved_str = ", ".join(self.unsaved)
+            lines.append(f"[yellow]⚠️  Unsaved:[/] {unsaved_str}")
+        else:
+            lines.append("[green]✓ All saved[/]")
+        
+        # Action feedback
+        if self.action != "Ready":
+            lines.append(f"[dim]{self.action}[/]")
+        
+        # Key hints
+        lines.append("")
+        lines.append("[dim bold]Key Bindings[/]")
+        lines.append("[dim]↑/↓ nav | e edit | / search | n new | b bulk | s save | r reload | ? help | q quit[/]")
+        
+        return "\n".join(lines)
     
     def update_status(self) -> None:
         """Update status from project."""
@@ -653,27 +685,33 @@ class LazyI18nApp(App):
         dock: top;
     }
     
-    Footer {
-        dock: bottom;
-    }
-    
     #left-pane {
         width: 40%;
+        height: 1fr;
         border: solid $primary;
         padding: 1;
+    }
+    
+    #right-container {
+        width: 60%;
+        height: 1fr;
+        layout: vertical;
     }
     
     #right-pane {
-        width: 60%;
+        width: 1fr;
+        height: 1fr;
         border: solid $primary;
         padding: 1;
+        overflow: auto;
     }
     
     #status-pane {
-        dock: bottom;
-        height: 5;
+        width: 1fr;
+        height: 50%;
         border: solid $accent;
         padding: 1;
+        background: $panel;
     }
     """
     
@@ -696,25 +734,25 @@ class LazyI18nApp(App):
         self.status_pane = None
         self.search_buffer = ""
         self.is_searching = False
+        self.edited_key = None  # Track the key that was just edited
     
     def compose(self) -> ComposeResult:
         """Compose the UI."""
         yield Header()
-        
-        self.status_pane = StatusPane(self.project)
-        self.status_pane.id = "status-pane"
-        yield self.status_pane
         
         with Horizontal():
             self.tree_pane = TreePane(self.project)
             self.tree_pane.id = "left-pane"
             yield self.tree_pane
             
-            self.values_pane = ValuesPane(self.project)
-            self.values_pane.id = "right-pane"
-            yield self.values_pane
-        
-        # Footer removed to avoid overlapping the status pane
+            with VerticalScroll(id="right-container"):
+                self.values_pane = ValuesPane(self.project)
+                self.values_pane.id = "right-pane"
+                yield self.values_pane
+                
+                self.status_pane = StatusPane(self.project)
+                self.status_pane.id = "status-pane"
+                yield self.status_pane
 
     def on_mount(self) -> None:
         """Initialize status contents after UI mounts."""
@@ -793,11 +831,15 @@ class LazyI18nApp(App):
         self.push_screen(BulkFillScreen(self.project))
 
     def action_save(self) -> None:
-        """Save changes to disk."""
+        """Save changes to disk and refresh UI."""
         if self.project.save():
-            self.status_pane.action = "✓ Saved"
+            self.status_pane.action = "✓ Saved to disk"
             self.status_pane.update_status()
+            # Rebuild tree to clear pencil indicators since everything is now saved
             self.tree_pane.rebuild(self.tree_pane.search_term)
+            self.edited_key = None  # Clear the edited key marker
+            # Refresh values pane
+            self.values_pane.refresh()
         else:
             self.status_pane.action = "✗ Save failed"
     
