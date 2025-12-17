@@ -4,10 +4,12 @@
       "title": "Sign In",
       "email": "Email Address",
       "password": "Passwordasdfasdf asdfasd asdf asdf",
-      "forgot": "Forgot Password?"
+      "forgot": "Forgot Password?",
+      "submit": "asdas"
     },
     "signup": {
-      "title": "Create Account"
+      "title": "Create Account",
+      "submit": "sdfsdf"
     }
   },
   "dashboard": {

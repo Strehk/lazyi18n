@@ -12,14 +12,64 @@ Enhanced version v3 with:
 from pathlib import Path
 import sys
 
-from textual.app import App, ComposeResult, on
+from textual.app import App, ComposeResult
+from textual import on
 from textual.containers import Horizontal, VerticalScroll
-from textual.widgets import Header, Footer, Static, Tree, Input, Label
+from textual.widgets import Header, Static, Tree, Input, Label
 from textual.reactive import reactive
 from textual.binding import Binding
 from textual.screen import Screen
 
 from core import TranslationProject
+class HelpScreen(Screen):
+    """Modal screen showing help and keybindings."""
+    
+    BINDINGS = [
+        ("escape", "close", "Close"),
+    ]
+    
+    CSS = """
+    HelpScreen { align: center middle; }
+    #help-dialog {
+        width: 90;
+        height: auto;
+        max-height: 80%;
+        border: heavy $accent;
+        background: $surface;
+        padding: 1 2;
+    }
+    #help-title { text-align: center; color: $accent; text-style: bold; margin-bottom: 1; }
+    #help-body { color: $text; }
+    #help-footer { dock: bottom; text-align: center; color: $text-muted; margin-top: 1; }
+    """
+    
+    def compose(self) -> ComposeResult:
+        with VerticalScroll(id="help-dialog"):
+            yield Label("LazyI18n Help", id="help-title")
+            help_lines = [
+                "[bold]Navigation[/]",
+                "  ↑/↓  Move selection in left tree",
+                "  /    Search/filter keys (type to filter; Esc cancels; Enter accepts)",
+                "",
+                "[bold]Editing[/]",
+                "  e  Edit selected key",
+                "  In editor: Tab/Enter next field; Ctrl+S save; Esc cancel; empty value deletes",
+                "  Live preview updates in right pane while typing",
+                "",
+                "[bold]Keys[/]",
+                "  n  Create a new key with per-locale values",
+                "  b  Bulk fill missing translations per locale",
+                "",
+                "[bold]Project[/]",
+                "  s  Save all changes to disk",
+                "  r  Reload translations from disk",
+                "  q  Quit",
+            ]
+            yield Label("\n".join(help_lines), id="help-body")
+            yield Label("Press Esc to close", id="help-footer")
+    
+    def action_close(self) -> None:
+        self.app.pop_screen()
 
 
 class EditScreen(Screen):
@@ -87,7 +137,7 @@ class EditScreen(Screen):
                     value=current_value,
                     placeholder=f"Enter {locale} translation..."
                 )
-                input_widget.locale = locale
+                # Track inputs by locale via self.inputs dict
                 self.inputs[locale] = input_widget
                 self.input_order.append(input_widget)
                 yield input_widget
@@ -124,12 +174,28 @@ class EditScreen(Screen):
             else:
                 # Empty field deletes the translation for that locale
                 self.project.delete_key_value(locale, self.key)
-        
+        # Clear any live preview
+        if hasattr(self.app, "values_pane") and self.app.values_pane:
+            self.app.values_pane.clear_preview()
         self.app.pop_screen()
     
     def action_cancel(self) -> None:
         """Cancel editing and close."""
+        # Clear any live preview
+        if hasattr(self.app, "values_pane") and self.app.values_pane:
+            self.app.values_pane.clear_preview()
         self.app.pop_screen()
+
+    def on_input_changed(self, event: Input.Changed) -> None:
+        """Update live preview in the values pane while editing."""
+        # Collect current input values per locale
+        current_values = {}
+        for locale, input_widget in self.inputs.items():
+            val = (input_widget.value or "").strip()
+            current_values[locale] = val
+        # Push preview to ValuesPane
+        if hasattr(self.app, "values_pane") and self.app.values_pane:
+            self.app.values_pane.set_preview(self.key, current_values)
 
 
 class NewKeyScreen(Screen):
@@ -217,7 +283,7 @@ class NewKeyScreen(Screen):
                 input_widget = Input(
                     placeholder=f"Enter {locale} translation..."
                 )
-                input_widget.locale = locale
+                # Track inputs by locale via self.inputs dict
                 self.inputs[locale] = input_widget
                 yield input_widget
             
@@ -361,7 +427,7 @@ class BulkFillScreen(Screen):
                 input_widget = Input(
                     placeholder=f"Enter value to apply to {len(self.missing_by_locale.get(locale, []))} missing keys..."
                 )
-                input_widget.locale = locale
+                # Track inputs by locale via self.inputs dict
                 self.inputs[locale] = input_widget
                 yield input_widget
             
@@ -483,6 +549,8 @@ class ValuesPane(Static):
     def __init__(self, project: TranslationProject):
         super().__init__()
         self.project = project
+        self.preview_key = ""
+        self.preview_values = {}
     
     def render(self) -> str:
         """Render values for selected key."""
@@ -491,7 +559,7 @@ class ValuesPane(Static):
                 "[dim]Select a key from the tree[/]\n\n"
                 "[bold]Keyboard Shortcuts:[/]\n"
                 "  [cyan]↑/↓[/]   Navigate tree\n"
-                "  [cyan]Enter[/] Edit translations\n"
+                "  [cyan]e[/]     Edit translations\n"
                 "  [cyan]/[/]     Search/filter\n"
                 "  [cyan]n[/]     New key\n"
                 "  [cyan]b[/]     Bulk fill missing\n"
@@ -504,16 +572,32 @@ class ValuesPane(Static):
         lines = [f"[bold cyan]{self.selected_key}[/]\n"]
         
         for locale in self.project.get_locales():
-            value = self.project.get_key_value(locale, self.selected_key)
+            # Prefer preview values when editing this key
+            if self.preview_key == self.selected_key and locale in self.preview_values:
+                value = self.preview_values.get(locale) or ""
+            else:
+                value = self.project.get_key_value(locale, self.selected_key)
             if value:
                 lines.append(f"[green]✓ {locale}[/green]: {value}")
             else:
                 lines.append(f"[red]✗ {locale}[/red]: [dim]MISSING[/]")
         
         lines.append("")
-        lines.append("[dim italic]Press Enter to edit[/]")
+        lines.append("[dim italic]Press e to edit[/]")
         
         return "\n".join(lines)
+
+    def set_preview(self, key: str, values: dict) -> None:
+        """Set live preview values for a key and refresh display."""
+        self.preview_key = key or ""
+        self.preview_values = values or {}
+        self.refresh()
+
+    def clear_preview(self) -> None:
+        """Clear any live preview and refresh display."""
+        self.preview_key = ""
+        self.preview_values = {}
+        self.refresh()
 
 
 class StatusPane(Static):
@@ -530,8 +614,14 @@ class StatusPane(Static):
     
     def render(self) -> str:
         """Render status bar."""
+        hints_line = (
+            "[dim]Keys: ↑/↓ navigate | e edit | / search | n new | b bulk | s save | r reload | ? help | q quit[/]"
+        )
         if self.search_mode:
-            return f"[bold yellow]SEARCH:[/] {self.search_term}_ | [dim]ESC to cancel | ENTER to finish[/]"
+            return (
+                f"[bold yellow]SEARCH:[/] {self.search_term}_ | [dim]ESC to cancel | ENTER to finish[/]" 
+                + "\n" + hints_line
+            )
         
         coverage = self.project.get_coverage()
         coverage_str = " | ".join(
@@ -539,11 +629,12 @@ class StatusPane(Static):
         )
         unsaved_str = ", ".join(self.unsaved) if self.unsaved else "none"
         
-        return (
+        status_line = (
             f"Coverage: {coverage_str} | "
             f"Unsaved: {unsaved_str} | "
             f"Action: {self.action}"
         )
+        return status_line + "\n" + hints_line
     
     def update_status(self) -> None:
         """Update status from project."""
@@ -580,7 +671,7 @@ class LazyI18nApp(App):
     
     #status-pane {
         dock: bottom;
-        height: 3;
+        height: 5;
         border: solid $accent;
         padding: 1;
     }
@@ -623,19 +714,29 @@ class LazyI18nApp(App):
             self.values_pane.id = "right-pane"
             yield self.values_pane
         
-        yield Footer()
+        # Footer removed to avoid overlapping the status pane
+
+    def on_mount(self) -> None:
+        """Initialize status contents after UI mounts."""
+        if self.status_pane:
+            self.status_pane.action = "Ready"
+            self.status_pane.update_status()
     
     @on(Tree.NodeSelected)
     def on_tree_select(self, event: Tree.NodeSelected) -> None:
         """Handle tree selection."""
         if event.node.data:
             self.values_pane.selected_key = event.node.data
+            # Force refresh to ensure right pane updates immediately
+            self.values_pane.refresh()
 
     @on(Tree.NodeHighlighted)
     def on_tree_highlight(self, event: Tree.NodeHighlighted) -> None:
         """Update values pane when the highlighted node changes via navigation."""
         if event.node.data:
             self.values_pane.selected_key = event.node.data
+            # Force refresh to ensure right pane updates during navigation
+            self.values_pane.refresh()
     
     def on_key(self, event) -> None:
         """Handle keyboard input."""
@@ -667,8 +768,8 @@ class LazyI18nApp(App):
                 self.tree_pane.rebuild(self.search_buffer)
                 return
         
-        # Normal mode - Enter to edit
-        if event.key == "enter" and self.values_pane.selected_key:
+        # Preserve Enter for Textual defaults; use 'e' to edit
+        if event.key == "e" and self.values_pane.selected_key:
             self.action_edit()
     
     def action_search(self) -> None:
@@ -711,8 +812,8 @@ class LazyI18nApp(App):
             self.status_pane.action = "✗ Reload failed"
     
     def action_help(self) -> None:
-        """Show help."""
-        self.status_pane.action = "↑/↓: Navigate | Enter/e: Edit | /: Search | n: New | b: Bulk | s: Save | r: Reload | q: Quit"
+        """Show help modal."""
+        self.push_screen(HelpScreen())
 
 
 class LazyI18nTUI:
