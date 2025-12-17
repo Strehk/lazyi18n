@@ -73,7 +73,6 @@ jobs:
     - name: Update Homebrew Formula
       env:
         COMMITTER_TOKEN: ${{ secrets.COMMITTER_TOKEN }}
-        VERSION: ${{ env.VERSION }}
       run: |
         # Configure git
         git config --global user.name "GitHub Actions"
@@ -86,8 +85,7 @@ jobs:
         # Update formula
         FORMULA_FILE="Formula/lazyi18n-nightly.rb"
         URL="https://github.com/${{ github.repository }}/releases/download/nightly/lazyi18n-${{ env.VERSION }}.tar.gz"
-             https://github.com/${{ github.repository }}/releases/download/nightly/lazyi18n-0.1.1.dev20251217141404.tar.gz
-
+        
         # Calculate SHA256
         curl -L -o artifact.tar.gz "$URL"
         SHA256=$(sha256sum artifact.tar.gz | awk '{print $1}')
@@ -99,5 +97,5 @@ jobs:
         
         # Commit and push
         git add $FORMULA_FILE
-        git commit -m "lazyi18n-nightly $VERSION"
+        git commit -m "lazyi18n-nightly ${{ env.VERSION }}"
         git push
