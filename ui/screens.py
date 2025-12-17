@@ -1,9 +1,17 @@
 from textual.app import ComposeResult
 from textual.containers import VerticalScroll
 from textual.screen import Screen
-from textual.widgets import Input, Label, LoadingIndicator
+from textual.widgets import Input, Label, LoadingIndicator, RichLog
 
 from core.project import TranslationProject
+from ui.styles import (
+    STYLE_PRIMARY,
+    STYLE_SECONDARY,
+    STYLE_ACCENT,
+    STYLE_WARNING,
+    STYLE_ERROR,
+    STYLE_SUCCESS,
+)
 
 
 class LoadingScreen(Screen):
@@ -71,6 +79,12 @@ class HelpScreen(Screen):
                 "",
                 "[bold]Keys[/]",
                 "  n      Create a new key with per-locale values",
+                "",
+                "[bold]Translation[/]",
+                "  t      Google Translate selected key (fills missing locales)",
+                "  a      LLM Translate selected key (OpenAI)",
+                "  T      Google Translate all missing keys (stages changes)",
+                "  Note: Configure API keys via CLI (see README)",
                 "",
                 "[bold]Project[/]",
                 "  s      Save all changes to disk",
@@ -328,18 +342,18 @@ class NewKeyScreen(Screen):
 
         # Validate key
         if not key:
-            self.error_label.update("[red][/] Key cannot be empty")
+            self.error_label.update(f"[{STYLE_ERROR}][/] Key cannot be empty")
             return
 
         if not all(c.isalnum() or c in "._-" for c in key):
             self.error_label.update(
-                "[red][/] Key can only contain letters, numbers, dots, hyphens, and underscores"
+                f"[{STYLE_ERROR}][/] Key can only contain letters, numbers, dots, hyphens, and underscores"
             )
             return
 
         # Check if key already exists
         if key in self.project.get_all_keys():
-            self.error_label.update("[red][/] Key already exists")
+            self.error_label.update(f"[{STYLE_ERROR}][/] Key already exists")
             return
 
         # Collect values
@@ -352,7 +366,7 @@ class NewKeyScreen(Screen):
 
         if not has_value:
             self.error_label.update(
-                "[red][/] At least one translation must be provided"
+                f"[{STYLE_ERROR}][/] At least one translation must be provided"
             )
             return
 
@@ -362,13 +376,164 @@ class NewKeyScreen(Screen):
                 self.app.search_buffer, self.app.show_staged, self.app.show_missing
             )
         if hasattr(self.app, "status_pane"):
-            self.app.status_pane.action = f"[green][/] Created key: {key}"
+            self.app.status_pane.action = f"[{STYLE_SUCCESS}][/] Created key: {key}"
 
         self.app.pop_screen()
 
     def action_cancel(self) -> None:
         """Cancel creating new key."""
         self.app.pop_screen()
+
+
+class LLMConfirmScreen(Screen):
+    """Modal screen for confirming LLM translation."""
+
+    BINDINGS = [
+        ("escape", "cancel", "Cancel"),
+        ("enter", "confirm", "Confirm"),
+    ]
+
+    CSS = """
+    LLMConfirmScreen {
+        align: center middle;
+    }
+    
+    #llm-dialog {
+        width: 70;
+        height: auto;
+        border: heavy $accent;
+        background: $surface;
+        padding: 1 2;
+    }
+    
+    #llm-title {
+        text-align: center;
+        color: $accent;
+        text-style: bold;
+        margin-bottom: 1;
+    }
+    
+    .info-label {
+        margin-top: 1;
+        color: $text-muted;
+    }
+    
+    .value-label {
+        color: $text;
+        margin-bottom: 1;
+    }
+    
+    #llm-help {
+        dock: bottom;
+        text-align: center;
+        color: $text-muted;
+        margin-top: 1;
+    }
+    """
+
+    def __init__(
+        self,
+        key: str,
+        source_locale: str,
+        source_text: str,
+        target_locales: list[str],
+        model: str,
+        on_confirm: callable,
+    ):
+        super().__init__()
+        self.key = key
+        self.source_locale = source_locale
+        self.source_text = source_text
+        self.target_locales = target_locales
+        self.model = model
+        self.on_confirm = on_confirm
+
+    def compose(self) -> ComposeResult:
+        with VerticalScroll(id="llm-dialog"):
+            yield Label("Confirm LLM Translation", id="llm-title")
+            
+            yield Label("Key:", classes="info-label")
+            yield Label(self.key, classes="value-label")
+            
+            yield Label(f"Source ({self.source_locale}):", classes="info-label")
+            yield Label(self.source_text, classes="value-label")
+            
+            yield Label("Target Locales:", classes="info-label")
+            yield Label(", ".join(self.target_locales), classes="value-label")
+            
+            yield Label("Model:", classes="info-label")
+            yield Label(self.model, classes="value-label")
+            
+            yield Label(
+                "[Esc] Cancel | [Enter] Translate", id="llm-help"
+            )
+
+    def action_confirm(self) -> None:
+        self.app.pop_screen()
+        self.on_confirm()
+
+    def action_cancel(self) -> None:
+        self.app.pop_screen()
+
+
+class LLMMissingKeyScreen(Screen):
+    """Modal screen for missing API key warning."""
+
+    BINDINGS = [
+        ("escape", "close", "Close"),
+        ("enter", "close", "Close"),
+    ]
+
+    CSS = """
+    LLMMissingKeyScreen {
+        align: center middle;
+    }
+    
+    #missing-key-dialog {
+        width: 60;
+        height: auto;
+        border: heavy $error;
+        background: $surface;
+        padding: 1 2;
+    }
+    
+    #missing-key-title {
+        text-align: center;
+        color: $error;
+        text-style: bold;
+        margin-bottom: 1;
+    }
+    
+    #missing-key-body {
+        color: $text;
+        margin: 1 0;
+        text-align: center;
+    }
+    
+    #missing-key-help {
+        dock: bottom;
+        text-align: center;
+        color: $text-muted;
+        margin-top: 1;
+    }
+    """
+
+    def compose(self) -> ComposeResult:
+        with VerticalScroll(id="missing-key-dialog"):
+            yield Label("Missing OpenAI API Key", id="missing-key-title")
+            yield Label(
+                "Please configure your OpenAI API key to use LLM translation.",
+                id="missing-key-body",
+            )
+            yield Label(
+                "[italic]Run: lazyi18n config set -k openai.api_key -v sk-...[/]",
+                classes="value-label",
+            )
+            yield Label("[Esc/Enter] Close", id="missing-key-help")
+
+    def action_close(self) -> None:
+        self.app.pop_screen()
+
 
 
 class DeleteConfirmScreen(Screen):
@@ -449,7 +614,7 @@ class DeleteConfirmScreen(Screen):
         if hasattr(self.app, "values_pane"):
             self.app.values_pane.selected_key = ""
         if hasattr(self.app, "status_pane"):
-            self.app.status_pane.action = f"[green][/] Deleted key: {self.key}"
+            self.app.status_pane.action = f"[{STYLE_SUCCESS}][/] Deleted key: {self.key}"
             self.app.status_pane.update_status()
 
         self.app.pop_screen()
@@ -511,7 +676,7 @@ class QuitConfirmScreen(Screen):
                 id="quit-warning",
             )
             yield Label(
-                "[bold red]Enter[/] Quit without saving | [Esc] Cancel", id="quit-help"
+                f"[bold {STYLE_ERROR}]Enter[/] Quit without saving | [Esc] Cancel", id="quit-help"
             )
 
     def action_confirm(self) -> None:
@@ -575,7 +740,7 @@ class ReloadConfirmScreen(Screen):
                 id="reload-warning",
             )
             yield Label(
-                "[bold red]Enter[/] Reload and discard | [Esc] Cancel", id="reload-help"
+                f"[bold {STYLE_ERROR}]Enter[/] Reload and discard | [Esc] Cancel", id="reload-help"
             )
 
     def action_confirm(self) -> None:
@@ -586,3 +751,55 @@ class ReloadConfirmScreen(Screen):
     def action_cancel(self) -> None:
         """Cancel reload."""
         self.app.pop_screen()
+
+
+class LLMProgressScreen(Screen):
+    """Screen showing LLM translation progress and logs."""
+
+    CSS = """
+    LLMProgressScreen {
+        align: center middle;
+    }
+    
+    #progress-dialog {
+        width: 80;
+        height: 80%;
+        border: heavy $accent;
+        background: $surface;
+        padding: 1 2;
+    }
+    
+    #progress-title {
+        text-align: center;
+        color: $accent;
+        text-style: bold;
+        margin-bottom: 1;
+    }
+    
+    RichLog {
+        height: 1fr;
+        border: solid $primary;
+        background: $surface-darken-1;
+        color: $text;
+    }
+    
+    LoadingIndicator {
+        height: auto;
+        margin: 1 0;
+    }
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.log_widget = RichLog(highlight=True, markup=True)
+
+    def compose(self) -> ComposeResult:
+        with VerticalScroll(id="progress-dialog"):
+            yield Label("Translating...", id="progress-title")
+            yield LoadingIndicator()
+            yield self.log_widget
+
+    def write_log(self, message: str) -> None:
+        """Write a message to the log."""
+        self.log_widget.write(message)
+

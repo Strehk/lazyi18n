@@ -58,7 +58,7 @@ pip install -e .
 Run `lazyi18n` in your terminal. By default, it looks for translation files in the current directory.
 
 ```bash
-# Open in current directory
+# Open TUI in current directory
 lazyi18n
 
 # Open in a specific directory
@@ -69,6 +69,53 @@ lazyi18n ./locales
 # If the key is missing, it opens the creation dialog with the key prefilled.
 lazyi18n -e auth.login.title
 ```
+
+### Configuration
+
+Manage configuration using the `config` subcommand:
+
+```bash
+# View all configuration
+lazyi18n config view
+
+# Set a global config value
+lazyi18n config set -k key -v value
+
+# Set a local (project-specific) config value
+lazyi18n config set -k key -v value --local
+
+# Delete a config key
+lazyi18n config delete -k key
+```
+
+Configuration is stored in:
+- **Global**: `~/.config/lazyi18n/config.toml`
+- **Local**: `.lazyi18n/config.toml` in your project directory
+
+Local config takes precedence over global config.
+
+### Machine Translation
+
+Automatically translate missing keys using Google Translate or OpenAI-compatible LLMs.
+
+**Google Translate:**
+No configuration required. Uses `deep-translator`.
+
+**LLM Translation (OpenAI):**
+Requires configuration:
+```bash
+lazyi18n config set -k openai.api_key -v YOUR_API_KEY
+# Optional:
+lazyi18n config set -k openai.model -v gpt-4
+lazyi18n config set -k openai.base_url -v https://api.openai.com/v1
+```
+
+**TUI Keybindings for Translation:**
+- `t` - Translate selected key (Google Translate)
+- `a` - Translate selected key (LLM / OpenAI)
+- `T` - Translate all missing keys (Google Translate)
+
+**Note:** For Google Translate, no API key is needed. For LLM, you must set `openai.api_key`.
 
 ### Keybindings
 

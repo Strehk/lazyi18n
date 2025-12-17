@@ -6,6 +6,9 @@ from textual.containers import Horizontal, VerticalScroll
 from textual.widgets import Header, Input, Tree
 
 from core.project import TranslationProject
+from core.config import Config
+from core.translator import Translator, TranslationError
+from core.llm import LLMTranslator
 from ui.panes import StatusPane, TreePane, ValuesPane
 from ui.screens import (
     DeleteConfirmScreen,
@@ -15,6 +18,17 @@ from ui.screens import (
     QuitConfirmScreen,
     ReloadConfirmScreen,
     LoadingScreen,
+    LLMConfirmScreen,
+    LLMMissingKeyScreen,
+    LLMProgressScreen,
+)
+from ui.styles import (
+    STYLE_PRIMARY,
+    STYLE_SECONDARY,
+    STYLE_ACCENT,
+    STYLE_WARNING,
+    STYLE_ERROR,
+    STYLE_SUCCESS,
 )
 
 
@@ -82,6 +96,9 @@ class LazyI18nApp(App):
         ("d", "delete_key", "Delete"),
         ("e", "toggle_staged", "Toggle Edited Filter"),
         ("m", "toggle_missing", "Toggle Missing Filter"),
+        ("t", "translate_key", "Translate Key"),
+        ("a", "llm_translate", "LLM Translate"),
+        ("T", "translate_all_missing", "Translate All Missing"),
         ("escape", "cancel_search", "Cancel Search"),
     ]
 
@@ -96,6 +113,11 @@ class LazyI18nApp(App):
         self.is_searching = False
         self.show_staged = False
         self.show_missing = False
+        
+        # Initialize config and translator
+        self.config = Config(Path(project.directory))
+        # Google Translate (deep-translator) does not require an API key
+        self.translator = Translator()
 
     def compose(self) -> ComposeResult:
         """Compose the UI."""
@@ -248,6 +270,214 @@ class LazyI18nApp(App):
                 DeleteConfirmScreen(self.project, self.values_pane.selected_key)
             )
 
+    def action_translate_key(self) -> None:
+        """Translate the selected key for all missing locales."""
+        if self.is_searching:
+            return
+        
+        if not self.values_pane.selected_key:
+            self.status_pane.action = f"[{STYLE_WARNING}]⚠[/] No key selected"
+            self.status_pane.update_status()
+            return
+
+        key = self.values_pane.selected_key
+        
+        try:
+            # Translate missing locales for this key
+            translations = self.translator.translate_missing(self.project, key)
+            
+            if not translations:
+                self.status_pane.action = f"[{STYLE_SECONDARY}]ℹ[/] No missing translations for {key}"
+                self.status_pane.update_status()
+                return
+            
+            # Apply translations (stages them, doesn't save)
+            for locale, text in translations.items():
+                self.project.set_key_value(locale, key, text)
+            
+            count = len(translations)
+            self.status_pane.action = f"[{STYLE_SUCCESS}][/] Translated {key} to {count} locale(s)"
+            self.status_pane.update_status()
+            
+            # Refresh UI
+            self.tree_pane.rebuild(self.search_buffer, self.show_staged, self.show_missing)
+            self.values_pane.refresh()
+            
+        except TranslationError as e:
+            self.status_pane.action = f"[{STYLE_ERROR}]✗[/] Translation failed: {e}"
+            self.status_pane.update_status()
+
+    def action_llm_translate(self) -> None:
+        """Translate the selected key using LLM."""
+        if self.is_searching:
+            return
+        
+        if not self.values_pane.selected_key:
+            self.status_pane.action = f"[{STYLE_WARNING}]⚠[/] No key selected"
+            self.status_pane.update_status()
+            return
+
+        key = self.values_pane.selected_key
+        
+        # Get source text (from default locale)
+        locales = self.project.get_locales()
+        if not locales:
+             return
+             
+        # Simple heuristic: use 'en' if present, else first locale
+        source_locale = 'en' if 'en' in locales else locales[0]
+        source_text = self.project.get_key_value(source_locale, key)
+        
+        if not source_text:
+             self.status_pane.action = f"[{STYLE_WARNING}]⚠[/] No source text found for {key} in {source_locale}"
+             self.status_pane.update_status()
+             return
+
+        # Determine target locales (missing ones)
+        target_locales = []
+        for locale in locales:
+            if locale == source_locale:
+                continue
+            if not self.project.get_key_value(locale, key):
+                target_locales.append(locale)
+        
+        if not target_locales:
+             self.status_pane.action = f"[{STYLE_SECONDARY}]ℹ[/] No missing translations for {key}"
+             self.status_pane.update_status()
+             return
+
+        # Initialize LLM Translator to get config
+        try:
+            config = Config(self.project.directory)
+            api_key = config.get("openai.api_key")
+            
+            if not api_key:
+                self.push_screen(LLMMissingKeyScreen())
+                return
+
+            llm_translator = LLMTranslator(
+                api_key=api_key,
+                base_url=config.get("openai.base_url"),
+                model=config.get("openai.model", "gpt-3.5-turbo"),
+            )
+        except Exception as e:
+             self.status_pane.action = f"[{STYLE_ERROR}]✗[/] LLM Init failed: {e}"
+             self.status_pane.update_status()
+             return
+
+        def do_translate():
+            # Create and push progress screen
+            progress_screen = LLMProgressScreen()
+            self.push_screen(progress_screen)
+            
+            self.status_pane.action = f"[{STYLE_WARNING}]⏳[/] LLM Translating {key}..."
+            self.status_pane.update_status()
+            
+            # Pass the function reference, not the result of calling it
+            self.run_worker(
+                lambda: self._llm_translate_worker(llm_translator, key, source_locale, source_text, target_locales, progress_screen), 
+                thread=True
+            )
+
+        self.push_screen(LLMConfirmScreen(
+            key=key,
+            source_locale=source_locale,
+            source_text=source_text,
+            target_locales=target_locales,
+            model=llm_translator.model,
+            on_confirm=do_translate
+        ))
+
+    def _llm_translate_worker(self, translator, key, source_locale, source_text, target_locales, progress_screen) -> None:
+        def log_callback(msg: str):
+            self.call_from_thread(progress_screen.write_log, msg)
+
+        try:
+            translations = translator.translate_key(
+                key, 
+                source_text, 
+                source_locale, 
+                target_locales,
+                log_callback=log_callback
+            )
+            self.call_from_thread(self._on_llm_translate_complete, key, translations, None)
+        except Exception as e:
+            self.call_from_thread(self._on_llm_translate_complete, key, None, str(e))
+
+    def _on_llm_translate_complete(self, key: str, translations: dict | None, error: str | None) -> None:
+        self.pop_screen() # Remove progress screen
+        
+        if error:
+            self.status_pane.action = f"[{STYLE_ERROR}]✗[/] LLM Translation failed: {error}"
+            self.status_pane.update_status()
+            return
+        
+        if not translations:
+             self.status_pane.action = f"[{STYLE_SECONDARY}]ℹ[/] No translations returned for {key}"
+             self.status_pane.update_status()
+             return
+
+        # Apply translations
+        for locale, text in translations.items():
+            self.project.set_key_value(locale, key, text)
+        
+        count = len(translations)
+        self.status_pane.action = f"[{STYLE_SUCCESS}][/] LLM Translated {key} to {count} locale(s)"
+        self.status_pane.update_status()
+        
+        # Refresh UI
+        self.tree_pane.rebuild(self.search_buffer, self.show_staged, self.show_missing)
+        self.values_pane.refresh()
+
+    def action_translate_all_missing(self) -> None:
+        """Translate all missing keys across all locales."""
+        if self.is_searching:
+            return
+        
+        gaps = self.project.get_gaps()
+        if not gaps:
+            self.status_pane.action = f"[{STYLE_SECONDARY}]ℹ[/] No missing translations"
+            self.status_pane.update_status()
+            return
+        
+        self.status_pane.action = f"[{STYLE_WARNING}]⏳[/] Translating all missing keys..."
+        self.status_pane.update_status()
+        
+        # Run translation in background worker
+        self.run_worker(self._translate_all_worker, thread=True)
+
+    def _translate_all_worker(self) -> None:
+        """Background worker for translating all missing keys."""
+        try:
+            translations = self.translator.translate_all_missing(self.project)
+            self.call_from_thread(self._on_translate_all_complete, translations, None)
+        except Exception as e:
+            self.call_from_thread(self._on_translate_all_complete, None, str(e))
+
+    def _on_translate_all_complete(self, translations: dict | None, error: str | None) -> None:
+        """Handle completion of translate all operation."""
+        if error:
+            self.status_pane.action = f"[{STYLE_ERROR}]✗[/] Translation failed: {error}"
+            self.status_pane.update_status()
+            return
+        
+        if not translations:
+            self.status_pane.action = f"[{STYLE_SECONDARY}]ℹ[/] No translations generated"
+            self.status_pane.update_status()
+            return
+        
+        # Apply translations (stages them, doesn't save)
+        for (locale, key), text in translations.items():
+            self.project.set_key_value(locale, key, text)
+        
+        count = len(translations)
+        self.status_pane.action = f"[{STYLE_SUCCESS}][/] Translated {count} missing keys"
+        self.status_pane.update_status()
+        
+        # Refresh UI
+        self.tree_pane.rebuild(self.search_buffer, self.show_staged, self.show_missing)
+        self.values_pane.refresh()
+
     def action_quit(self) -> None:
         """Quit the application."""
         if self.is_searching:
@@ -263,7 +493,7 @@ class LazyI18nApp(App):
         if self.is_searching:
             return
         if self.project.save():
-            self.status_pane.action = "[green][/] Saved to disk"
+            self.status_pane.action = f"[{STYLE_SUCCESS}][/] Saved to disk"
             self.status_pane.update_status()
             # Rebuild tree to clear pencil indicators since everything is now saved
             self.tree_pane.rebuild(
@@ -272,19 +502,19 @@ class LazyI18nApp(App):
             # Refresh values pane
             self.values_pane.refresh()
         else:
-            self.status_pane.action = "[red][/] Save failed"
+            self.status_pane.action = f"[{STYLE_ERROR}][/] Save failed"
 
     def perform_reload(self) -> None:
         """Execute the reload operation."""
         if self.project.reload():
-            self.status_pane.action = "[green][/] Reloaded"
+            self.status_pane.action = f"[{STYLE_SUCCESS}][/] Reloaded"
             self.status_pane.update_status()
             self.tree_pane.rebuild(
                 self.search_buffer, self.show_staged, self.show_missing
             )
             self.values_pane.selected_key = ""
         else:
-            self.status_pane.action = "[red][/] Reload failed"
+            self.status_pane.action = f"[{STYLE_ERROR}][/] Reload failed"
 
     def action_reload(self) -> None:
         """Reload from disk."""

@@ -5,6 +5,14 @@ from textual.widgets import Input, Static, Tree
 from textual.binding import Binding
 
 from core.project import TranslationProject
+from ui.styles import (
+    STYLE_PRIMARY,
+    STYLE_SECONDARY,
+    STYLE_ACCENT,
+    STYLE_WARNING,
+    STYLE_ERROR,
+    STYLE_SUCCESS,
+)
 
 
 class TranslationTree(Tree):
@@ -104,20 +112,20 @@ class TreePane(Static):
 
             # Mark with status: unsaved, gap, or complete
             if has_unsaved:
-                label = f"[yellow][/]  [bold yellow]{key}[/]"
+                label = f"[{STYLE_WARNING}][/]  [bold {STYLE_WARNING}]{key}[/]"
             elif has_gap:
-                label = f"[red][/]  [bold red]{key}[/]"
+                label = f"[{STYLE_ERROR}][/]  [bold {STYLE_ERROR}]{key}[/]"
             else:
-                label = f"[green][/] {key}"
+                label = f"[{STYLE_SUCCESS}][/] {key}"
             root.add_leaf(label, data=key)
 
         # Build tree with category warnings if any child has gaps
         for category in sorted(categories.keys()):
             category_keys = categories[category]
             category_has_gap = any(k in gaps for k in category_keys)
-            cat_label = f"[blue][/] {category}"
+            cat_label = f"[{STYLE_SECONDARY}][/] {category}"
             if category_has_gap:
-                cat_label = f"[red][/]  {cat_label}"
+                cat_label = f"[{STYLE_ERROR}][/] {cat_label}"
             cat_node = root.add(cat_label)
             cat_node.expand()
             for key in sorted(categories[category]):
@@ -128,11 +136,11 @@ class TreePane(Static):
 
                 # Mark with status: unsaved, gap, or complete
                 if has_unsaved:
-                    label = f"[yellow][/]  [bold yellow]{label}[/]"
+                    label = f"[{STYLE_WARNING}][/] [bold {STYLE_WARNING}]{label}[/]"
                 elif has_gap:
-                    label = f"[red][/]  [bold red]{label}[/]"
+                    label = f"[{STYLE_ERROR}][/] [bold {STYLE_ERROR}]{label}[/]"
                 else:
-                    label = f"[green][/] {label}"
+                    label = f"[{STYLE_SUCCESS}][/] {label}"
                 cat_node.add_leaf(label, data=key)
 
     def rebuild(
@@ -170,7 +178,7 @@ class ValuesPane(Static):
         """Render values for selected key."""
         if not self.selected_key:
             return (
-                "[$primary] #                           ###   #    #####         \n"
+                f"[{STYLE_PRIMARY}] #                           ###   #    #####         \n"
                 " #         ##   ###### #   #  #   ##   #     # #    # \n"
                 " #        #  #      #   # #   #  # #   #     # ##   # \n"
                 " #       #    #    #     #    #    #    #####  # #  # \n"
@@ -179,10 +187,10 @@ class ValuesPane(Static):
                 " ####### #    # ######   #   ### #####  #####  #    # \n[/]"
                 "\n\n"
                 "[dim]Select a key from the tree[/]\n\n"
-                "Press [cyan]?[/] for Help"
+                f"Press [{STYLE_SECONDARY}]?[/] for Help"
             )
 
-        lines = [f"[bold cyan reverse] {self.selected_key} [/]\n"]
+        lines = [f"[bold {STYLE_PRIMARY} reverse] {self.selected_key} [/]\n"]
 
         for locale in self.project.get_locales():
             # Prefer preview values when editing this key
@@ -191,9 +199,9 @@ class ValuesPane(Static):
             else:
                 value = self.project.get_key_value(locale, self.selected_key)
             if value:
-                lines.append(f"[green] {locale}[/green]: {value}")
+                lines.append(f"[{STYLE_SUCCESS}] {locale}[/green]: {value}")
             else:
-                lines.append(f"[red] {locale}[/red]: [dim]MISSING[/]")
+                lines.append(f"[{STYLE_ERROR}] {locale}[/{STYLE_ERROR}]: [dim]MISSING[/]")
 
         return "\n".join(lines)
 
@@ -244,10 +252,10 @@ class StatusDisplay(Static):
         # 1. Project Overview
         lines.append("[bold]Project Overview[/]")
         lines.append(
-            f"  Keys: [cyan]{total_keys}[/] | Locales: [cyan]{len(locales)}[/] ({', '.join(locales)})"
+            f"  Keys: [{STYLE_PRIMARY}]{total_keys}[/] | Locales: [{STYLE_PRIMARY}]{len(locales)}[/] ({', '.join(locales)})"
         )
         lines.append(
-            f"  Fully Translated: [green]{fully_translated}[/] | Partial: [yellow]{len(gaps)}[/]"
+            f"  Fully Translated: [{STYLE_SUCCESS}]{fully_translated}[/] | Partial: [{STYLE_WARNING}]{len(gaps)}[/]"
         )
         lines.append("")
 
@@ -260,7 +268,7 @@ class StatusDisplay(Static):
                 present = total_keys - missing
 
                 # Color based on percentage
-                color = "green" if pct == 100 else "yellow" if pct >= 80 else "red"
+                color = STYLE_SUCCESS if pct == 100 else STYLE_WARNING if pct >= 80 else STYLE_ERROR
 
                 # Progress bar (20 chars wide)
                 bar_width = 20
@@ -276,9 +284,9 @@ class StatusDisplay(Static):
         if self.show_staged or self.show_missing:
             filters = []
             if self.show_staged:
-                filters.append("[yellow]Edited (e)[/]")
+                filters.append(f"[{STYLE_WARNING}]Edited (e)[/]")
             if self.show_missing:
-                filters.append("[red]Missing (m)[/]")
+                filters.append(f"[{STYLE_ERROR}]Missing (m)[/]")
             lines.append(f"  [bold]Filters:[/] {', '.join(filters)}")
             lines.append("")
 
@@ -289,15 +297,15 @@ class StatusDisplay(Static):
         changed_keys = self.project.get_changed_keys()
         if changed_keys:
             lines.append(
-                f"  [yellow]●[/] Unsaved Changes: [yellow]{len(changed_keys)}[/] keys modified"
+                f"  [{STYLE_WARNING}]●[/] Unsaved Changes: [{STYLE_WARNING}]{len(changed_keys)}[/] keys modified"
             )
             lines.append(f"      Locales: {', '.join(self.unsaved)}")
         else:
-            lines.append("  [green]●[/] All changes saved")
+            lines.append(f"  [{STYLE_SUCCESS}]●[/] All changes saved")
 
         # Last Action
         if self.action != "Ready":
-            lines.append(f"  [blue]ℹ[/] {self.action}")
+            lines.append(f"  [{STYLE_SECONDARY}]ℹ[/] {self.action}")
 
         # Key hints (compact)
         lines.append("")

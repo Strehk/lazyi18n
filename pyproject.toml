@@ -28,6 +28,10 @@ dependencies = [
     "rich>=14.2.0",
     "textual>=6.10.0",
     "typing_extensions>=4.15.0",
+    "tomli>=2.0.0",
+    "tomli-w>=1.0.0",
+    "deep-translator>=1.11.4",
+    "openai>=2.13.0",
 ]
 
 [project.optional-dependencies]
