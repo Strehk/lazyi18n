@@ -65,7 +65,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        gh release create nightly-${{ env.VERSION }} dist/* \
+        gh release create nightly dist/* \
           --title "Nightly Build" \
           --notes "Nightly build based on commit $(git rev-parse --short HEAD) generated on $(date)" \
           --prerelease
@@ -86,6 +86,7 @@ jobs:
         # Update formula
         FORMULA_FILE="Formula/lazyi18n-nightly.rb"
         URL="https://github.com/${{ github.repository }}/releases/download/nightly/lazyi18n-${VERSION}.tar.gz"
+             https://github.com/${{ github.repository }}/releases/download/nightly-0.1.1.dev20251217141121/lazyi18n-0.1.1.dev20251217141121.tar.gz
         
         # Calculate SHA256
         curl -L -o artifact.tar.gz "$URL"
