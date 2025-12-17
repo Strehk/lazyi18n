@@ -65,15 +65,38 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        gh release create nightly dist/* \
+        gh release create nightly-${{ env.VERSION }} dist/* \
           --title "Nightly Build" \
           --notes "Nightly build based on commit $(git rev-parse --short HEAD) generated on $(date)" \
           --prerelease
 
-    - name: Bump Homebrew formula
-      uses: dawidd6/action-homebrew-bump-formula@v3
-      with:
-        token: ${{ secrets.COMMITTER_TOKEN }}
-        tap: strehk/homebrew-lazyi18n
-        formula: lazyi18n-nightly
-        tag: ${{ env.VERSION }}
+    - name: Update Homebrew Formula
+      env:
+        COMMITTER_TOKEN: ${{ secrets.COMMITTER_TOKEN }}
+        VERSION: ${{ env.VERSION }}
+      run: |
+        # Configure git
+        git config --global user.name "GitHub Actions"
+        git config --global user.email "actions@github.com"
+        
+        # Clone tap
+        git clone https://x-access-token:${COMMITTER_TOKEN}@github.com/strehk/homebrew-lazyi18n.git tap
+        cd tap
+        
+        # Update formula
+        FORMULA_FILE="Formula/lazyi18n-nightly.rb"
+        URL="https://github.com/${{ github.repository }}/releases/download/nightly/lazyi18n-${VERSION}.tar.gz"
+        
+        # Calculate SHA256
+        curl -L -o artifact.tar.gz "$URL"
+        SHA256=$(sha256sum artifact.tar.gz | awk '{print $1}')
+        rm artifact.tar.gz
+        
+        # Update content
+        export FORMULA_FILE URL VERSION SHA256
+        python3 -c "import os, re; content = open(os.environ['FORMULA_FILE']).read(); content = re.sub(r'url \".*\"', f'url \"{os.environ['URL']}\"', content); content = re.sub(r'version \".*\"', f'version \"{os.environ['VERSION']}\"', content); content = re.sub(r'sha256 \".*\"', f'sha256 \"{os.environ['SHA256']}\"', content); open(os.environ['FORMULA_FILE'], 'w').write(content)"
+        
+        # Commit and push
+        git add $FORMULA_FILE
+        git commit -m "lazyi18n-nightly $VERSION"
+        git push
