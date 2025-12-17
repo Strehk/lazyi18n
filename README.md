@@ -86,6 +86,12 @@ lazyi18n config set -k key -v value --local
 
 # Delete a config key
 lazyi18n config delete -k key
+
+# Edit the config file in your default editor ($EDITOR)
+lazyi18n config edit
+
+# Edit the local config file
+lazyi18n config edit --local
 ```
 
 Configuration is stored in:
@@ -93,6 +99,44 @@ Configuration is stored in:
 - **Local**: `.lazyi18n/config.toml` in your project directory
 
 Local config takes precedence over global config.
+
+### Theme Configuration
+
+You can customize the look and feel of lazyi18n by configuring the theme in your `config.toml`.
+
+**Using a Built-in Theme:**
+
+lazyi18n supports all standard Textual themes (e.g., `textual-dark`, `textual-light`, `nord`, `gruvbox`, `solarized-light`, `solarized-dark`, `dracula`, `monokai`). You can look up available themes by opening the Textual Command Palette with `Ctrl+P` and typing `theme`.
+
+```toml
+[theme]
+name = "nord"
+```
+
+Or via CLI:
+```bash
+lazyi18n config set -k theme.name -v nord
+```
+
+**Creating a Custom Theme:**
+
+You can define your own colors by setting the theme variables directly.
+
+```toml
+[theme]
+primary = "#004578"
+secondary = "#005a9e"
+accent = "#0078d4"
+warning = "#ffa500"
+error = "#ff0000"
+success = "#008000"
+dark = true
+```
+
+Or via CLI:
+```bash
+lazyi18n config set -k theme.primary -v "#123456"
+```
 
 ### Machine Translation
 

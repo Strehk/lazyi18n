@@ -3,6 +3,7 @@ from pathlib import Path
 from textual import on
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, VerticalScroll
+from textual.theme import Theme
 from textual.widgets import Header, Input, Tree
 
 from core.project import TranslationProject
@@ -21,14 +22,6 @@ from ui.screens import (
     LLMConfirmScreen,
     LLMMissingKeyScreen,
     LLMProgressScreen,
-)
-from ui.styles import (
-    STYLE_PRIMARY,
-    STYLE_SECONDARY,
-    STYLE_ACCENT,
-    STYLE_WARNING,
-    STYLE_ERROR,
-    STYLE_SUCCESS,
 )
 
 
@@ -137,8 +130,40 @@ class LazyI18nApp(App):
                 self.status_pane.id = "status-pane"
                 yield self.status_pane
 
+    def _load_theme(self) -> None:
+        """Load and register theme from config."""
+        # Check if a specific built-in theme is requested
+        theme_name = self.config.get("theme.name", "textual-dark")
+        
+        # Check for custom color overrides
+        primary = self.config.get("theme.primary")
+        secondary = self.config.get("theme.secondary")
+        accent = self.config.get("theme.accent")
+        warning = self.config.get("theme.warning")
+        error = self.config.get("theme.error")
+        success = self.config.get("theme.success")
+        
+        if any([primary, secondary, accent, warning, error, success]):
+            # Create a custom theme based on the requested name (if possible) or default
+            custom_theme = Theme(
+                name="lazyi18n-custom",
+                primary=primary or "#004578", # Default textual-dark primary
+                secondary=secondary or "#005a9e",
+                accent=accent or "#0078d4",
+                warning=warning or "#ffa500",
+                error=error or "#ff0000",
+                success=success or "#008000",
+                dark=self.config.get("theme.dark", True)
+            )
+            self.register_theme(custom_theme)
+            self.theme = "lazyi18n-custom"
+        elif theme_name:
+            # Just use the named theme (built-in)
+            self.theme = theme_name
+
     def on_mount(self) -> None:
         """Initialize status contents after UI mounts."""
+        self._load_theme() 
         if self.status_pane:
             self.status_pane.action = "Ready"
             self.status_pane.update_status()
@@ -276,7 +301,7 @@ class LazyI18nApp(App):
             return
         
         if not self.values_pane.selected_key:
-            self.status_pane.action = f"[{STYLE_WARNING}]⚠[/] No key selected"
+            self.status_pane.action = f"[$warning]⚠[/] No key selected"
             self.status_pane.update_status()
             return
 
@@ -287,7 +312,7 @@ class LazyI18nApp(App):
             translations = self.translator.translate_missing(self.project, key)
             
             if not translations:
-                self.status_pane.action = f"[{STYLE_SECONDARY}]ℹ[/] No missing translations for {key}"
+                self.status_pane.action = f"[$secondary]ℹ[/] No missing translations for {key}"
                 self.status_pane.update_status()
                 return
             
@@ -296,7 +321,7 @@ class LazyI18nApp(App):
                 self.project.set_key_value(locale, key, text)
             
             count = len(translations)
-            self.status_pane.action = f"[{STYLE_SUCCESS}][/] Translated {key} to {count} locale(s)"
+            self.status_pane.action = f"[$success][/] Translated {key} to {count} locale(s)"
             self.status_pane.update_status()
             
             # Refresh UI
@@ -304,7 +329,7 @@ class LazyI18nApp(App):
             self.values_pane.refresh()
             
         except TranslationError as e:
-            self.status_pane.action = f"[{STYLE_ERROR}]✗[/] Translation failed: {e}"
+            self.status_pane.action = f"[$error]✗[/] Translation failed: {e}"
             self.status_pane.update_status()
 
     def action_llm_translate(self) -> None:
@@ -313,7 +338,7 @@ class LazyI18nApp(App):
             return
         
         if not self.values_pane.selected_key:
-            self.status_pane.action = f"[{STYLE_WARNING}]⚠[/] No key selected"
+            self.status_pane.action = f"[$warning]⚠[/] No key selected"
             self.status_pane.update_status()
             return
 
@@ -329,7 +354,7 @@ class LazyI18nApp(App):
         source_text = self.project.get_key_value(source_locale, key)
         
         if not source_text:
-             self.status_pane.action = f"[{STYLE_WARNING}]⚠[/] No source text found for {key} in {source_locale}"
+             self.status_pane.action = f"[$warning]⚠[/] No source text found for {key} in {source_locale}"
              self.status_pane.update_status()
              return
 
@@ -342,7 +367,7 @@ class LazyI18nApp(App):
                 target_locales.append(locale)
         
         if not target_locales:
-             self.status_pane.action = f"[{STYLE_SECONDARY}]ℹ[/] No missing translations for {key}"
+             self.status_pane.action = f"[$warning]ℹ[/] No missing translations for {key}"
              self.status_pane.update_status()
              return
 
@@ -361,7 +386,7 @@ class LazyI18nApp(App):
                 model=config.get("openai.model", "gpt-3.5-turbo"),
             )
         except Exception as e:
-             self.status_pane.action = f"[{STYLE_ERROR}]✗[/] LLM Init failed: {e}"
+             self.status_pane.action = f"[$warning]✗[/] LLM Init failed: {e}"
              self.status_pane.update_status()
              return
 
@@ -370,7 +395,7 @@ class LazyI18nApp(App):
             progress_screen = LLMProgressScreen()
             self.push_screen(progress_screen)
             
-            self.status_pane.action = f"[{STYLE_WARNING}]⏳[/] LLM Translating {key}..."
+            self.status_pane.action = f"[$warning]⏳[/] LLM Translating {key}..."
             self.status_pane.update_status()
             
             # Pass the function reference, not the result of calling it
@@ -408,12 +433,12 @@ class LazyI18nApp(App):
         self.pop_screen() # Remove progress screen
         
         if error:
-            self.status_pane.action = f"[{STYLE_ERROR}]✗[/] LLM Translation failed: {error}"
+            self.status_pane.action = f"[$error]✗[/] LLM Translation failed: {error}"
             self.status_pane.update_status()
             return
         
         if not translations:
-             self.status_pane.action = f"[{STYLE_SECONDARY}]ℹ[/] No translations returned for {key}"
+             self.status_pane.action = f"[$secondary]ℹ[/] No translations returned for {key}"
              self.status_pane.update_status()
              return
 
@@ -422,7 +447,7 @@ class LazyI18nApp(App):
             self.project.set_key_value(locale, key, text)
         
         count = len(translations)
-        self.status_pane.action = f"[{STYLE_SUCCESS}][/] LLM Translated {key} to {count} locale(s)"
+        self.status_pane.action = f"[$success][/] LLM Translated {key} to {count} locale(s)"
         self.status_pane.update_status()
         
         # Refresh UI
@@ -436,11 +461,11 @@ class LazyI18nApp(App):
         
         gaps = self.project.get_gaps()
         if not gaps:
-            self.status_pane.action = f"[{STYLE_SECONDARY}]ℹ[/] No missing translations"
+            self.status_pane.action = f"[$secondary]ℹ[/] No missing translations"
             self.status_pane.update_status()
             return
         
-        self.status_pane.action = f"[{STYLE_WARNING}]⏳[/] Translating all missing keys..."
+        self.status_pane.action = f"[$warning]⏳[/] Translating all missing keys..."
         self.status_pane.update_status()
         
         # Run translation in background worker
@@ -457,12 +482,12 @@ class LazyI18nApp(App):
     def _on_translate_all_complete(self, translations: dict | None, error: str | None) -> None:
         """Handle completion of translate all operation."""
         if error:
-            self.status_pane.action = f"[{STYLE_ERROR}]✗[/] Translation failed: {error}"
+            self.status_pane.action = f"[$error]✗[/] Translation failed: {error}"
             self.status_pane.update_status()
             return
         
         if not translations:
-            self.status_pane.action = f"[{STYLE_SECONDARY}]ℹ[/] No translations generated"
+            self.status_pane.action = f"[$secondary]ℹ[/] No translations generated"
             self.status_pane.update_status()
             return
         
@@ -471,7 +496,7 @@ class LazyI18nApp(App):
             self.project.set_key_value(locale, key, text)
         
         count = len(translations)
-        self.status_pane.action = f"[{STYLE_SUCCESS}][/] Translated {count} missing keys"
+        self.status_pane.action = f"[$success][/] Translated {count} missing keys"
         self.status_pane.update_status()
         
         # Refresh UI
@@ -493,7 +518,7 @@ class LazyI18nApp(App):
         if self.is_searching:
             return
         if self.project.save():
-            self.status_pane.action = f"[{STYLE_SUCCESS}][/] Saved to disk"
+            self.status_pane.action = f"[$success][/] Saved to disk"
             self.status_pane.update_status()
             # Rebuild tree to clear pencil indicators since everything is now saved
             self.tree_pane.rebuild(
@@ -502,19 +527,19 @@ class LazyI18nApp(App):
             # Refresh values pane
             self.values_pane.refresh()
         else:
-            self.status_pane.action = f"[{STYLE_ERROR}][/] Save failed"
+            self.status_pane.action = f"[$error][/] Save failed"
 
     def perform_reload(self) -> None:
         """Execute the reload operation."""
         if self.project.reload():
-            self.status_pane.action = f"[{STYLE_SUCCESS}][/] Reloaded"
+            self.status_pane.action = f"[$success][/] Reloaded"
             self.status_pane.update_status()
             self.tree_pane.rebuild(
                 self.search_buffer, self.show_staged, self.show_missing
             )
             self.values_pane.selected_key = ""
         else:
-            self.status_pane.action = f"[{STYLE_ERROR}][/] Reload failed"
+            self.status_pane.action = f"[$error][/] Reload failed"
 
     def action_reload(self) -> None:
         """Reload from disk."""

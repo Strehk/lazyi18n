@@ -5,15 +5,6 @@ from textual.widgets import Input, Static, Tree
 from textual.binding import Binding
 
 from core.project import TranslationProject
-from ui.styles import (
-    STYLE_PRIMARY,
-    STYLE_SECONDARY,
-    STYLE_ACCENT,
-    STYLE_WARNING,
-    STYLE_ERROR,
-    STYLE_SUCCESS,
-)
-
 
 class TranslationTree(Tree):
     """Custom Tree widget to handle keybindings."""
@@ -112,20 +103,20 @@ class TreePane(Static):
 
             # Mark with status: unsaved, gap, or complete
             if has_unsaved:
-                label = f"[{STYLE_WARNING}][/]  [bold {STYLE_WARNING}]{key}[/]"
+                label = f"[{self.app.current_theme.warning}][/]  [bold {self.app.current_theme.warning}]{key}[/]"
             elif has_gap:
-                label = f"[{STYLE_ERROR}][/]  [bold {STYLE_ERROR}]{key}[/]"
+                label = f"[{self.app.current_theme.error}][/]  [bold {self.app.current_theme.error}]{key}[/]"
             else:
-                label = f"[{STYLE_SUCCESS}][/] {key}"
+                label = f"[{self.app.current_theme.success}][/] {key}"
             root.add_leaf(label, data=key)
 
         # Build tree with category warnings if any child has gaps
         for category in sorted(categories.keys()):
             category_keys = categories[category]
             category_has_gap = any(k in gaps for k in category_keys)
-            cat_label = f"[{STYLE_SECONDARY}][/] {category}"
+            cat_label = f"[{self.app.current_theme.secondary}][/] {category}"
             if category_has_gap:
-                cat_label = f"[{STYLE_ERROR}][/] {cat_label}"
+                cat_label = f"[{self.app.current_theme.error}][/] {cat_label}"
             cat_node = root.add(cat_label)
             cat_node.expand()
             for key in sorted(categories[category]):
@@ -136,11 +127,11 @@ class TreePane(Static):
 
                 # Mark with status: unsaved, gap, or complete
                 if has_unsaved:
-                    label = f"[{STYLE_WARNING}][/] [bold {STYLE_WARNING}]{label}[/]"
+                    label = f"[{self.app.current_theme.warning}][/] [bold {self.app.current_theme.warning}]{label}[/]"
                 elif has_gap:
-                    label = f"[{STYLE_ERROR}][/] [bold {STYLE_ERROR}]{label}[/]"
+                    label = f"[{self.app.current_theme.error}][/] [bold {self.app.current_theme.error}]{label}[/]"
                 else:
-                    label = f"[{STYLE_SUCCESS}][/] {label}"
+                    label = f"[{self.app.current_theme.success}][/] {label}"
                 cat_node.add_leaf(label, data=key)
 
     def rebuild(
@@ -178,7 +169,7 @@ class ValuesPane(Static):
         """Render values for selected key."""
         if not self.selected_key:
             return (
-                f"[{STYLE_PRIMARY}] #                           ###   #    #####         \n"
+                f"[$primary] #                           ###   #    #####         \n"
                 " #         ##   ###### #   #  #   ##   #     # #    # \n"
                 " #        #  #      #   # #   #  # #   #     # ##   # \n"
                 " #       #    #    #     #    #    #    #####  # #  # \n"
@@ -187,10 +178,10 @@ class ValuesPane(Static):
                 " ####### #    # ######   #   ### #####  #####  #    # \n[/]"
                 "\n\n"
                 "[dim]Select a key from the tree[/]\n\n"
-                f"Press [{STYLE_SECONDARY}]?[/] for Help"
+                "Press [$secondary]?[/] for Help"
             )
 
-        lines = [f"[bold {STYLE_PRIMARY} reverse] {self.selected_key} [/]\n"]
+        lines = [f"[bold $primary reverse] {self.selected_key} [/]\n"]
 
         for locale in self.project.get_locales():
             # Prefer preview values when editing this key
@@ -199,9 +190,9 @@ class ValuesPane(Static):
             else:
                 value = self.project.get_key_value(locale, self.selected_key)
             if value:
-                lines.append(f"[{STYLE_SUCCESS}] {locale}[/green]: {value}")
+                lines.append(f"[$success] {locale}[/]: {value}")
             else:
-                lines.append(f"[{STYLE_ERROR}] {locale}[/{STYLE_ERROR}]: [dim]MISSING[/]")
+                lines.append(f"[$error] {locale}[/]: [dim]MISSING[/]")
 
         return "\n".join(lines)
 
@@ -252,10 +243,10 @@ class StatusDisplay(Static):
         # 1. Project Overview
         lines.append("[bold]Project Overview[/]")
         lines.append(
-            f"  Keys: [{STYLE_PRIMARY}]{total_keys}[/] | Locales: [{STYLE_PRIMARY}]{len(locales)}[/] ({', '.join(locales)})"
+            f"  Keys: [$primary]{total_keys}[/] | Locales: [$primary]{len(locales)}[/] ({', '.join(locales)})"
         )
         lines.append(
-            f"  Fully Translated: [{STYLE_SUCCESS}]{fully_translated}[/] | Partial: [{STYLE_WARNING}]{len(gaps)}[/]"
+            f"  Fully Translated: [$success]{fully_translated}[/] | Partial: [$warning]{len(gaps)}[/]"
         )
         lines.append("")
 
@@ -268,7 +259,7 @@ class StatusDisplay(Static):
                 present = total_keys - missing
 
                 # Color based on percentage
-                color = STYLE_SUCCESS if pct == 100 else STYLE_WARNING if pct >= 80 else STYLE_ERROR
+                color = "$success" if pct == 100 else "$warning" if pct >= 80 else "$error"
 
                 # Progress bar (20 chars wide)
                 bar_width = 20
@@ -284,9 +275,9 @@ class StatusDisplay(Static):
         if self.show_staged or self.show_missing:
             filters = []
             if self.show_staged:
-                filters.append(f"[{STYLE_WARNING}]Edited (e)[/]")
+                filters.append(f"[$warning]Edited (e)[/]")
             if self.show_missing:
-                filters.append(f"[{STYLE_ERROR}]Missing (m)[/]")
+                filters.append(f"[$error]Missing (m)[/]")
             lines.append(f"  [bold]Filters:[/] {', '.join(filters)}")
             lines.append("")
 
@@ -297,15 +288,14 @@ class StatusDisplay(Static):
         changed_keys = self.project.get_changed_keys()
         if changed_keys:
             lines.append(
-                f"  [{STYLE_WARNING}]●[/] Unsaved Changes: [{STYLE_WARNING}]{len(changed_keys)}[/] keys modified"
+                f"  [$warning]●[/] Unsaved Changes: [$warning]{len(changed_keys)}[/] keys modified"
             )
             lines.append(f"      Locales: {', '.join(self.unsaved)}")
         else:
-            lines.append(f"  [{STYLE_SUCCESS}]●[/] All changes saved")
-
+            lines.append(f"  [$success]●[/] All changes saved")
         # Last Action
         if self.action != "Ready":
-            lines.append(f"  [{STYLE_SECONDARY}]ℹ[/] {self.action}")
+            lines.append(f"  [$secondary]ℹ[/] {self.action}")
 
         # Key hints (compact)
         lines.append("")

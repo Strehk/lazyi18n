@@ -4,14 +4,6 @@ from textual.screen import Screen
 from textual.widgets import Input, Label, LoadingIndicator, RichLog
 
 from core.project import TranslationProject
-from ui.styles import (
-    STYLE_PRIMARY,
-    STYLE_SECONDARY,
-    STYLE_ACCENT,
-    STYLE_WARNING,
-    STYLE_ERROR,
-    STYLE_SUCCESS,
-)
 
 
 class LoadingScreen(Screen):
@@ -342,18 +334,18 @@ class NewKeyScreen(Screen):
 
         # Validate key
         if not key:
-            self.error_label.update(f"[{STYLE_ERROR}][/] Key cannot be empty")
+            self.error_label.update(f"[$error][/] Key cannot be empty")
             return
 
         if not all(c.isalnum() or c in "._-" for c in key):
             self.error_label.update(
-                f"[{STYLE_ERROR}][/] Key can only contain letters, numbers, dots, hyphens, and underscores"
+                f"[$error][/] Key can only contain letters, numbers, dots, hyphens, and underscores"
             )
             return
 
         # Check if key already exists
         if key in self.project.get_all_keys():
-            self.error_label.update(f"[{STYLE_ERROR}][/] Key already exists")
+            self.error_label.update(f"[$error][/] Key already exists")
             return
 
         # Collect values
@@ -366,7 +358,7 @@ class NewKeyScreen(Screen):
 
         if not has_value:
             self.error_label.update(
-                f"[{STYLE_ERROR}][/] At least one translation must be provided"
+                f"[$error][/] At least one translation must be provided"
             )
             return
 
@@ -376,7 +368,7 @@ class NewKeyScreen(Screen):
                 self.app.search_buffer, self.app.show_staged, self.app.show_missing
             )
         if hasattr(self.app, "status_pane"):
-            self.app.status_pane.action = f"[{STYLE_SUCCESS}][/] Created key: {key}"
+            self.app.status_pane.action = f"[$success][/] Created key: {key}"
 
         self.app.pop_screen()
 
@@ -614,7 +606,7 @@ class DeleteConfirmScreen(Screen):
         if hasattr(self.app, "values_pane"):
             self.app.values_pane.selected_key = ""
         if hasattr(self.app, "status_pane"):
-            self.app.status_pane.action = f"[{STYLE_SUCCESS}][/] Deleted key: {self.key}"
+            self.app.status_pane.action = f"[$success][/] Deleted key: {self.key}"
             self.app.status_pane.update_status()
 
         self.app.pop_screen()
@@ -676,7 +668,7 @@ class QuitConfirmScreen(Screen):
                 id="quit-warning",
             )
             yield Label(
-                f"[bold {STYLE_ERROR}]Enter[/] Quit without saving | [Esc] Cancel", id="quit-help"
+                f"[bold $error]Enter[/] Quit without saving | [Esc] Cancel", id="quit-help"
             )
 
     def action_confirm(self) -> None:
@@ -740,7 +732,7 @@ class ReloadConfirmScreen(Screen):
                 id="reload-warning",
             )
             yield Label(
-                f"[bold {STYLE_ERROR}]Enter[/] Reload and discard | [Esc] Cancel", id="reload-help"
+                f"[bold $error]Enter[/] Reload and discard | [Esc] Cancel", id="reload-help"
             )
 
     def action_confirm(self) -> None:

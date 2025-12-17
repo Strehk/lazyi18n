@@ -4,6 +4,8 @@ lazyi18n - A TUI for managing i18next translation files.
 """
 
 import sys
+import os
+import subprocess
 from importlib.metadata import version, PackageNotFoundError
 from pathlib import Path
 
@@ -74,6 +76,30 @@ def handle_config_command(args):
             print(f"Deleted {scope} config key: {args.key}")
         else:
             print(f"Error: Config key '{args.key}' not found")
+            sys.exit(1)
+
+    elif args.config_action == "edit":
+        # Edit config file in default editor
+        if args.local:
+            path = config.get_local_config_path()
+            if not path:
+                print("Error: Could not determine local config path")
+                sys.exit(1)
+        else:
+            path = Config.get_global_config_path()
+
+        # Ensure directory exists
+        path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Create file if it doesn't exist
+        if not path.exists():
+            path.touch()
+
+        editor = os.environ.get("EDITOR", "vi")
+        try:
+            subprocess.call([editor, str(path)])
+        except FileNotFoundError:
+            print(f"Error: Editor '{editor}' not found. Please set EDITOR environment variable.")
             sys.exit(1)
 
 
@@ -161,8 +187,8 @@ def main():
     )
     config_parser.add_argument(
         "config_action",
-        choices=["view", "set", "delete"],
-        help="Action to perform: view config, set a value, or delete a key",
+        choices=["view", "set", "delete", "edit"],
+        help="Action to perform: view config, set a value, delete a key, or edit the file",
     )
     config_parser.add_argument(
         "-k", "--key", help="Configuration key (supports dot notation, e.g., translator.api_key)"
