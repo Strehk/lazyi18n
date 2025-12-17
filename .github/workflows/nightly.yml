@@ -30,15 +30,10 @@ jobs:
 
     - name: Generate Nightly Version
       run: |
-        # Extract current version from pyproject.toml using Python
-        CURRENT_VERSION=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")
-        
         # Get current date
-        DATE=$(date +'%Y%m%d')
+        DATE=$(date +'%Y%m%d%H%M%S')
         
-        # Construct nightly version: <current_version>.dev<date>
-        # Example: 0.1.1.dev20231217
-        VERSION="${CURRENT_VERSION}.dev${DATE}"
+        VERSION="nightly${DATE}"
         
         echo "Detected base version: $CURRENT_VERSION"
         echo "Generated nightly version: $VERSION"
