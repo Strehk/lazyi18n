@@ -77,6 +77,6 @@ jobs:
         homebrew-tap: strehk/homebrew-lazyi18n
         download-url: https://github.com/${{ github.repository }}/releases/download/nightly/lazyi18n-${{ env.VERSION }}.tar.gz
         base-branch: main
-        tag-name: nightly
+        tag-name: nightly-${{ env.VERSION }}
       env:
         COMMITTER_TOKEN: ${{ secrets.COMMITTER_TOKEN }}
