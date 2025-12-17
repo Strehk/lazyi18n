@@ -2,7 +2,30 @@
 
 A terminal UI for managing i18next translation files, inspired by lazygit. Wrangle your nested JSON translation files with ease, identify missing translations at a glance, and maintain consistency across locales.
 
+![wallpaper](./img/wallpaper.png)
+
 ## Why lazyi18n?
+
+### Elevator Pitch
+
+Localization usually implies manually hunting for keys and editing fragile JSON files. Existing tools are expensive, proprietary, and force you out of your workflow into a browser—usually way too late in the dev cycle.
+
+LazyI18n fixes this by bringing a visual interface directly to your terminal. It flattens keys, highlights missing translations, and lets you AI-translate entire locales in seconds. Whether you’re in the shell or using the Neovim integration, it keeps you in the flow. It’s localization for developers who value their sanity.
+
+### Is lazyi18n for me?
+
+Most localization tools are built for enterprise teams with dedicated translators. For the rest of us, that usually means falling back to manually editing fragile JSON files and hunting for missing keys.
+
+**lazyi18n is designed for developers who just need to ship with i18n already in place.**
+
+It bridges the gap by bringing a powerful visual interface directly to your terminal.
+*   **Stay in Flow:** Manage translations without leaving your code or your editor.
+*   **No Overkill:** Perfect for projects with a few languages that don't need a complex SaaS platform.
+*   **AI Powered:** Fill gaps instantly with cheap machine translation or bring your LLM key for even better translation.
+
+If you value your sanity and want to fix translations *while* you code, not after the PR is open or - even worse - already merged, lazyi18n is for you.
+
+### Project Overview
 
 Editing i18n files manually is painful:
 - **No useful integration in your editor workflow**
@@ -11,9 +34,11 @@ Editing i18n files manually is painful:
 - **Manual comparison** between locales is tedious
 
 lazyi18n brings the UX of lazygit to translation management. It's a TUI that helps you:
-- **Visualize translation keys** in a tree structure
-- **Highlight gaps** in translations across locales
-- **Integrate with LazyVim/Neovim** for seamless workflow
+- **Visualize translation keys** in a navigable tree structure
+- **Highlight gaps** in translations across locales instantly
+- **Manage keys** (create, edit, delete) without touching JSON
+- **Automate translation** using machine translate or OpenAI-compatible LLMs (bring your own API key)
+- **Integrate with LazyVim/Neovim** for a seamless workflow
 
 ## Installation
 
@@ -27,7 +52,7 @@ brew tap strehk/lazyi18n
 brew install lazyi18n
 ```
 
-**Nightly Build:**
+**Nightly Build (main branch):**
 ```bash
 brew tap strehk/lazyi18n
 brew install lazyi18n-nightly
