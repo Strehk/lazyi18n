@@ -65,7 +65,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        gh release create nightly dist/* \
+        gh release create nightly-${{ env.VERSION }} dist/* \
           --title "Nightly Build" \
           --notes "Nightly build based on commit $(git rev-parse --short HEAD) generated on $(date)" \
           --prerelease
@@ -75,7 +75,7 @@ jobs:
       with:
         formula-name: lazyi18n-nightly
         homebrew-tap: strehk/homebrew-lazyi18n
-        download-url: https://github.com/${{ github.repository }}/releases/download/nightly/lazyi18n-${{ env.VERSION }}.tar.gz
+        download-url: https://github.com/${{ github.repository }}/releases/download/nightly-${{ env.VERSION }}/lazyi18n-${{ env.VERSION }}.tar.gz
         base-branch: main
         tag-name: ${{ env.VERSION }}
         commit-message: "{{formulaName}} {{version}}"
