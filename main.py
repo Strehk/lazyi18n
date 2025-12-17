@@ -9,7 +9,7 @@ Enhanced version v3 with:
 - New key creation wizard
 """
 
-__version__ = "3.0.0"
+__version__ = "0.1.0"
 
 from pathlib import Path
 import sys
