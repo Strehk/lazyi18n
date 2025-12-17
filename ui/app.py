@@ -1,122 +1,252 @@
-"""
-Textual UI for lazyi18n - Main application.
-"""
-
 from pathlib import Path
-from typing import Optional
 
-from textual.app import ComposeResult, on
-from textual.containers import Container, Horizontal, Vertical
-from textual.widgets import Header, Footer, Static, Tree
-from textual.reactive import reactive
+from textual import on
+from textual.app import App, ComposeResult
+from textual.containers import Horizontal, VerticalScroll
+from textual.widgets import Header, Input, Tree
 
-from core import TranslationProject
+from core.project import TranslationProject
+from ui.panes import StatusPane, TreePane, ValuesPane
+from ui.screens import (
+    DeleteConfirmScreen,
+    EditScreen,
+    HelpScreen,
+    NewKeyScreen,
+    QuitConfirmScreen,
+    ReloadConfirmScreen,
+)
 
 
-class TranslationTree(Tree):
-    """Custom tree widget for displaying translation keys."""
+class LazyI18nApp(App):
+    """Textual application for lazyi18n."""
+    
+    TITLE = "LazyI18n"
+    
+    CSS = """
+    Screen {
+        layout: horizontal;
+    }
+    
+    Header {
+        dock: top;
+    }
+    
+    #left-pane {
+        width: 40%;
+        height: 1fr;
+        border: round $primary;
+        padding: 1;
+    }
+    
+    #right-container {
+        width: 60%;
+        height: 1fr;
+        layout: vertical;
+    }
+    
+    #right-pane {
+        width: 1fr;
+        height: 1fr;
+        border: round $primary;
+        padding: 1;
+        overflow: auto;
+    }
+    
+    #status-pane {
+        width: 1fr;
+        height: 50%;
+        border: round $accent;
+        padding: 1;
+    }
+    
+    #search-input {
+        border: none;
+        width: 100%;
+        background: transparent;
+    }
+    
+    Tree {
+        background: transparent;
+    }
+    """
+    
+    BINDINGS = [
+        ("s", "save", "Save"),
+        ("q", "quit", "Quit"),
+        ("r", "reload", "Reload"),
+        ("?", "help", "Help"),
+        ("e", "edit", "Edit"),
+        ("/", "search", "Search"),
+        ("n", "new_key", "New Key"),
+        ("d", "delete_key", "Delete"),
+        ("escape", "cancel_search", "Cancel Search"),
+    ]
     
     def __init__(self, project: TranslationProject):
-        super().__init__("Root")
+        super().__init__()
         self.project = project
-        self._build_tree()
+        self.tree_pane = None
+        self.values_pane = None
+        self.status_pane = None
+        self.search_buffer = ""
+        self.is_searching = False
     
-    def _build_tree(self) -> None:
-        """Build the tree from translation keys."""
-        root = self.root
-        root.label = "Keys"
+    def compose(self) -> ComposeResult:
+        """Compose the UI."""
+        yield Header()
         
-        # Group keys by first level
-        keys = self.project.get_all_keys()
-        gaps = self.project.get_gaps()
-        
-        # Build hierarchy
-        categories = {}
-        for key in keys:
-            parts = key.split(".")
-            category = parts[0] if len(parts) > 1 else "other"
+        with Horizontal():
+            self.tree_pane = TreePane(self.project)
+            self.tree_pane.id = "left-pane"
+            yield self.tree_pane
             
-            if category not in categories:
-                categories[category] = []
-            categories[category].append(key)
+            with VerticalScroll(id="right-container"):
+                self.values_pane = ValuesPane(self.project)
+                self.values_pane.id = "right-pane"
+                yield self.values_pane
+                
+                self.status_pane = StatusPane(self.project)
+                self.status_pane.id = "status-pane"
+                yield self.status_pane
+
+    def on_mount(self) -> None:
+        """Initialize status contents after UI mounts."""
+        if self.status_pane:
+            self.status_pane.action = "Ready"
+            self.status_pane.update_status()
+    
+    @on(Tree.NodeSelected)
+    def on_tree_select(self, event: Tree.NodeSelected) -> None:
+        """Handle tree selection."""
+        if event.node.data:
+            self.values_pane.selected_key = event.node.data
+            # Force refresh to ensure right pane updates immediately
+            self.values_pane.refresh()
+
+    @on(Tree.NodeHighlighted)
+    def on_tree_highlight(self, event: Tree.NodeHighlighted) -> None:
+        """Update values pane when the highlighted node changes via navigation."""
+        if event.node.data:
+            self.values_pane.selected_key = event.node.data
+            # Force refresh to ensure right pane updates during navigation
+            self.values_pane.refresh()
+    
+    @on(Input.Changed, "#search-input")
+    def on_search_changed(self, event: Input.Changed) -> None:
+        """Handle search input changes."""
+        self.search_buffer = event.value
+        self.tree_pane.rebuild(self.search_buffer)
+    
+    @on(Input.Submitted, "#search-input")
+    def on_search_submitted(self, event: Input.Submitted) -> None:
+        """Handle search submission."""
+        self.is_searching = False
+        self.status_pane.search_input.display = False
+        self.status_pane.status_display.display = True
+        self.status_pane.action = f"Filter: {self.search_buffer or 'none'}"
+        # Focus tree to allow navigation
+        self.set_focus(self.tree_pane)
+    
+    def action_search(self) -> None:
+        """Enter search mode."""
+        self.is_searching = True
+        self.status_pane.status_display.display = False
+        self.status_pane.search_input.display = True
+        self.status_pane.search_input.value = self.search_buffer
+        self.set_focus(self.status_pane.search_input)
         
-        # Add to tree
-        for category in sorted(categories.keys()):
-            node = root.add(category)
-            for key in sorted(categories[category]):
-                label = key
-                # Mark gaps with a warning emoji
-                if key in gaps:
-                    label += " ⚠️"
-                node.add_leaf(label, data=key)
+    def action_cancel_search(self) -> None:
+        """Cancel search mode."""
+        if self.is_searching:
+            self.is_searching = False
+            self.search_buffer = ""
+            self.status_pane.search_input.display = False
+            self.status_pane.status_display.display = True
+            self.tree_pane.clear_filter()
+            self.set_focus(self.tree_pane)
+    
+    def action_edit(self) -> None:
+        """Edit the selected key."""
+        if self.is_searching:
+            return
+        if self.values_pane.selected_key:
+            self.push_screen(EditScreen(self.project, self.values_pane.selected_key))
+    
+    def action_new_key(self) -> None:
+        """Create a new translation key."""
+        if self.is_searching:
+            return
+        self.push_screen(NewKeyScreen(self.project))
+    
+    def action_delete_key(self) -> None:
+        """Delete the selected key with confirmation."""
+        if self.is_searching:
+            return
+        if self.values_pane.selected_key:
+            self.push_screen(DeleteConfirmScreen(self.project, self.values_pane.selected_key))
+
+    def action_quit(self) -> None:
+        """Quit the application."""
+        if self.is_searching:
+            return
+            
+        if self.project.has_unsaved_changes():
+            self.push_screen(QuitConfirmScreen())
+        else:
+            self.exit()
+
+    def action_save(self) -> None:
+        """Save changes to disk and refresh UI."""
+        if self.is_searching:
+            return
+        if self.project.save():
+            self.status_pane.action = "[green][/] Saved to disk"
+            self.status_pane.update_status()
+            # Rebuild tree to clear pencil indicators since everything is now saved
+            self.tree_pane.rebuild(self.tree_pane.search_term)
+            # Refresh values pane
+            self.values_pane.refresh()
+        else:
+            self.status_pane.action = "[red][/] Save failed"
+    
+    def perform_reload(self) -> None:
+        """Execute the reload operation."""
+        if self.project.reload():
+            self.status_pane.action = "[green][/] Reloaded"
+            self.status_pane.update_status()
+            self.tree_pane.rebuild(self.tree_pane.search_term)
+            self.values_pane.selected_key = ""
+        else:
+            self.status_pane.action = "[red][/] Reload failed"
+
+    def action_reload(self) -> None:
+        """Reload from disk."""
+        if self.is_searching:
+            return
+            
+        if self.project.has_unsaved_changes():
+            self.push_screen(ReloadConfirmScreen())
+        else:
+            self.perform_reload()
+    
+    def action_help(self) -> None:
+        """Show help modal."""
+        if self.is_searching:
+            return
+        self.push_screen(HelpScreen())
 
 
-class ValuesPanel(Static):
-    """Right pane showing translation values for selected key."""
+class LazyI18nTUI:
+    """Main TUI wrapper."""
     
-    selected_key: reactive[Optional[str]] = reactive(None, recompose=True)
-    
-    def __init__(self, project: TranslationProject):
-        super().__init__()
-        self.project = project
-    
-    def render(self) -> str:
-        """Render the values panel."""
-        if not self.selected_key:
-            return "[dim]Select a key to view translations[/]"
-        
-        lines = [f"[bold]{self.selected_key}[/]", ""]
-        
-        for locale in self.project.get_locales():
-            value = self.project.get_key_value(locale, self.selected_key)
-            status = "✓" if value else "✗ Missing"
-            if value:
-                lines.append(f"[green]{locale}[/] {status}: {value}")
-            else:
-                lines.append(f"[red]{locale}[/] {status}")
-        
-        return "\n".join(lines)
-
-
-class StatusBar(Static):
-    """Bottom pane showing status and recent actions."""
-    
-    unsaved_count: reactive[int] = reactive(0)
-    last_action: reactive[str] = reactive("Ready")
-    
-    def __init__(self, project: TranslationProject):
-        super().__init__()
-        self.project = project
-        self.update_status()
-    
-    def render(self) -> str:
-        """Render the status bar."""
-        coverage = self.project.get_coverage()
-        coverage_str = ", ".join(
-            f"{loc}: {cov:.1f}%" for loc, cov in coverage.items()
-        )
-        
-        return (
-            f"[bold]Coverage:[/] {coverage_str} | "
-            f"[bold]Unsaved:[/] {self.unsaved_count} | "
-            f"[bold]Action:[/] {self.last_action}"
-        )
-    
-    def update_status(self) -> None:
-        """Update status from project."""
-        self.unsaved_count = len(self.project.get_unsaved_locales())
-
-
-class LazyI18nApp:
-    """Main application using Textual."""
-    
-    def __init__(self, directory: Path | str):
-        self.project = TranslationProject(directory)
+    def __init__(self, directory: Path | str = "."):
+        self.directory = Path(directory)
+        self.project = TranslationProject(self.directory)
     
     def load(self) -> bool:
-        """Load project from disk."""
+        """Load translations from disk."""
         return self.project.load()
     
-    def save(self) -> bool:
-        """Save all changes."""
-        return self.project.save()
+    def create_app(self) -> LazyI18nApp:
+        """Create and return the Textual app."""
+        return LazyI18nApp(self.project)
