@@ -701,6 +701,7 @@ class TreePane(Static):
         self.project = project
         self._tree = None
         self.search_term = ""
+        self.border_title = "Keys"
     
     def compose(self) -> ComposeResult:
         """Compose the tree pane."""
@@ -815,11 +816,20 @@ class ValuesPane(Static):
         self.project = project
         self.preview_key = ""
         self.preview_values = {}
+        self.border_title = "Translations"
     
     def render(self) -> str:
         """Render values for selected key."""
         if not self.selected_key:
             return (
+                " #                           ###   #    #####         \n"
+                " #         ##   ###### #   #  #   ##   #     # #    # \n"
+                " #        #  #      #   # #   #  # #   #     # ##   # \n"
+                " #       #    #    #     #    #    #    #####  # #  # \n"
+                " #       ######   #      #    #    #   #     # #  # # \n"
+                " #       #    #  #       #    #    #   #     # #   ## \n"
+                " ####### #    # ######   #   ### #####  #####  #    # \n"
+                "\n\n"                                                                                        
                 "[dim]Select a key from the tree[/]\n\n"
                 "[bold]Keyboard Shortcuts:[/]\n"
                 "  [cyan]↑/↓[/]   Navigate tree\n"
@@ -833,7 +843,7 @@ class ValuesPane(Static):
                 "  [cyan]?[/]     Help\n"
             )
         
-        lines = [f"[bold cyan]{self.selected_key}[/]\n"]
+        lines = [f"[bold cyan reverse] {self.selected_key} [/]\n"]
         
         for locale in self.project.get_locales():
             # Prefer preview values when editing this key
@@ -924,6 +934,7 @@ class StatusPane(Container):
         self.status_display = StatusDisplay(project)
         self.search_input = Input(placeholder="Search keys...", id="search-input")
         self.search_input.display = False
+        self.border_title = "Status"
         
         # Proxy properties to display widget for compatibility
         self._action = "Ready"
@@ -959,7 +970,7 @@ class LazyI18nApp(App):
     #left-pane {
         width: 40%;
         height: 1fr;
-        border: solid $primary;
+        border: round $primary;
         padding: 1;
     }
     
@@ -972,7 +983,7 @@ class LazyI18nApp(App):
     #right-pane {
         width: 1fr;
         height: 1fr;
-        border: solid $primary;
+        border: round $primary;
         padding: 1;
         overflow: auto;
     }
@@ -980,15 +991,18 @@ class LazyI18nApp(App):
     #status-pane {
         width: 1fr;
         height: 50%;
-        border: solid $accent;
+        border: round $accent;
         padding: 1;
-        background: $panel;
     }
     
     #search-input {
         border: none;
-        background: $panel;
         width: 100%;
+        background: transparent;
+    }
+    
+    Tree {
+        background: transparent;
     }
     """
     
