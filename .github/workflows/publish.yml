@@ -39,8 +39,7 @@ jobs:
     - name: Update pyproject.toml version
       run: |
         # Update the version in pyproject.toml to match the release tag
-        # Matches: version = "..." allowing for spaces
-        sed -i "s/^version[[:space:]]*=[[:space:]]*\".*\"/version = \"$VERSION\"/" pyproject.toml
+        python -c "import sys, re; content = open('pyproject.toml').read(); open('pyproject.toml', 'w').write(re.sub(r'^version\s*=\s*\".*\"', f'version = \"{sys.argv[1]}\"', content, flags=re.MULTILINE))" "$VERSION"
         
         # Verify the change
         grep "^version" pyproject.toml
