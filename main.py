@@ -776,7 +776,7 @@ class StatusPane(Container):
     def __init__(self, project: TranslationProject):
         super().__init__()
         self.project = project
-        self.display = StatusDisplay(project)
+        self.status_display = StatusDisplay(project)
         self.search_input = Input(placeholder="Search keys...", id="search-input")
         self.search_input.display = False
         
@@ -785,18 +785,18 @@ class StatusPane(Container):
     
     @property
     def action(self):
-        return self.display.action
+        return self.status_display.action
         
     @action.setter
     def action(self, value):
-        self.display.action = value
+        self.status_display.action = value
         
     def compose(self) -> ComposeResult:
-        yield self.display
+        yield self.status_display
         yield self.search_input
         
     def update_status(self) -> None:
-        self.display.update_status()
+        self.status_display.update_status()
 
 
 class LazyI18nApp(App):
@@ -909,13 +909,6 @@ class LazyI18nApp(App):
             # Force refresh to ensure right pane updates during navigation
             self.values_pane.refresh()
     
-    def on_key(self, event) -> None:
-        """Handle keyboard input."""
-        # Preserve Enter for Textual defaults; use 'e' to edit
-        # Only trigger edit if we are NOT searching (Input widget handles its own keys)
-        if not self.is_searching and event.key == "e" and self.values_pane.selected_key:
-            self.action_edit()
-    
     @on(Input.Changed, "#search-input")
     def on_search_changed(self, event: Input.Changed) -> None:
         """Handle search input changes."""
@@ -927,7 +920,7 @@ class LazyI18nApp(App):
         """Handle search submission."""
         self.is_searching = False
         self.status_pane.search_input.display = False
-        self.status_pane.display.display = True
+        self.status_pane.status_display.display = True
         self.status_pane.action = f"Filter: {self.search_buffer or 'none'}"
         # Focus tree to allow navigation
         self.set_focus(self.tree_pane)
@@ -935,7 +928,7 @@ class LazyI18nApp(App):
     def action_search(self) -> None:
         """Enter search mode."""
         self.is_searching = True
-        self.status_pane.display.display = False
+        self.status_pane.status_display.display = False
         self.status_pane.search_input.display = True
         self.status_pane.search_input.value = self.search_buffer
         self.set_focus(self.status_pane.search_input)
@@ -946,30 +939,40 @@ class LazyI18nApp(App):
             self.is_searching = False
             self.search_buffer = ""
             self.status_pane.search_input.display = False
-            self.status_pane.display.display = True
+            self.status_pane.status_display.display = True
             self.tree_pane.clear_filter()
             self.set_focus(self.tree_pane)
     
     def action_edit(self) -> None:
         """Edit the selected key."""
+        if self.is_searching:
+            return
         if self.values_pane.selected_key:
             self.push_screen(EditScreen(self.project, self.values_pane.selected_key))
     
     def action_new_key(self) -> None:
         """Create a new translation key."""
+        if self.is_searching:
+            return
         self.push_screen(NewKeyScreen(self.project))
     
     def action_bulk_fill(self) -> None:
         """Bulk fill missing translations."""
+        if self.is_searching:
+            return
         self.push_screen(BulkFillScreen(self.project))
     
     def action_delete_key(self) -> None:
         """Delete the selected key with confirmation."""
+        if self.is_searching:
+            return
         if self.values_pane.selected_key:
             self.push_screen(DeleteConfirmScreen(self.project, self.values_pane.selected_key))
 
     def action_save(self) -> None:
         """Save changes to disk and refresh UI."""
+        if self.is_searching:
+            return
         if self.project.save():
             self.status_pane.action = "[green][/] Saved to disk"
             self.status_pane.update_status()
@@ -982,6 +985,8 @@ class LazyI18nApp(App):
     
     def action_reload(self) -> None:
         """Reload from disk."""
+        if self.is_searching:
+            return
         if self.project.reload():
             self.status_pane.action = "[green][/] Reloaded"
             self.status_pane.update_status()
@@ -992,6 +997,8 @@ class LazyI18nApp(App):
     
     def action_help(self) -> None:
         """Show help modal."""
+        if self.is_searching:
+            return
         self.push_screen(HelpScreen())
 
 
