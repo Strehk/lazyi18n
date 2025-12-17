@@ -12,7 +12,6 @@
 ✓ Phase 2.9: Single-key shortcuts (no more Ctrl!)
 ✓ Phase 3.0: Search/filter functionality (/)
 ✓ Phase 3.1: New key creation wizard (n)
-✓ Phase 3.2: Bulk fill missing translations (b)
 ✓ Working example with en.json & de.json
 ✓ Test suite validates all functionality
 ✓ Launcher script for easy execution
@@ -23,10 +22,9 @@
 q             → Quit
 s             → Save changes
 r             → Reload from disk
-Enter or e    → Edit selected key (opens modal)
+e             → Edit selected key (opens modal)
 /             → Search/filter keys
 n             → Create new translation key
-b             → Bulk fill missing translations
 ?             → Show help
 ↑/↓           → Navigate tree
 Tab           → Next field (in edit mode)
@@ -35,7 +33,7 @@ Ctrl+S        → Save from edit/create mode
 
 ✨ NEW: INLINE EDITING
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Press Enter on any key to open a modal edit dialog showing:
+Press e on any key to open a modal edit dialog showing:
   - Translation key name
   - Input fields for each locale
   - Tab navigation between fields  - Visual feedback for current locale
@@ -43,7 +41,7 @@ Press Enter on any key to open a modal edit dialog showing:
 
 Example workflow:
 1. Navigate tree with ↑/↓
-2. Press Enter on "auth.login.title"
+2. Press e on "auth.login.title"
 3. Edit en: "Sign In"
 4. Tab to next field
 5. Edit de: "Anmelden"
@@ -81,21 +79,6 @@ Example:
 5. Fill de: "Passwort vergessen"
 6. Press Ctrl+S to create
 7. New key appears in tree!
-
-🛠️ NEW: BULK FILL
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Press b to bulk fill missing translations:
-  - Shows how many keys are missing per locale
-  - Enter a value per locale to apply to all missing keys
-  - Leave blank to skip a locale
-  - Requires at least one locale value
-
-Example:
-1. Press b
-2. Fill en: "TODO"
-3. Fill de: "TODO"
-4. Press Ctrl+S to apply
-5. Missing markers clear for filled locales
 
 📦 WHAT YOU HAVE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

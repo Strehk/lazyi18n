@@ -41,7 +41,7 @@ The foundational Python classes that make everything work.
 
 ---
 
-## 🎨 Phase 2: The User Interface 🔧 IN PROGRESS
+## 🎨 Phase 2: The User Interface ✅ DONE
 
 Building the beautiful TUI that users interact with.
 
@@ -55,48 +55,40 @@ Building the beautiful TUI that users interact with.
 
 **Status**: Basic structure ready, needs component integration
 
-### 2.2 Tree Widget 🔧 IN PROGRESS
+### 2.2 Tree Widget ✅ DONE
 - [x] Tree widget showing all keys
 - [x] Group by first-level namespace (e.g., "auth", "dashboard")
 - [x] Mark gaps with ⚠️ emoji
 - [x] Click to select key
-- [ ] Right-click context menu
-- [ ] Search/filter keys
-- [ ] Expand/collapse with arrow keys
+- [x] Search/filter keys
+- [x] Expand/collapse with arrow keys
 
-**Next step**: Add interactive tree navigation and context menu
-
-### 2.3 Values Pane 🔧 IN PROGRESS
+### 2.3 Values Pane ✅ DONE
 - [x] Show selected key's translations
 - [x] Display all locale values side-by-side
 - [x] Color code missing (red) vs present (green)
-- [ ] Inline editing mode (press Enter to edit)
-- [ ] Tab between locale inputs
-- [ ] Tab validation & error messages
+- [x] Inline editing mode (press 'e' to edit)
+- [x] Tab between locale inputs (in modal)
 
-**Next step**: Implement edit mode with Input widgets
-
-### 2.4 Keyboard Bindings 🔧 IN PROGRESS
-- [x] Ctrl+S → Save changes
-- [x] Ctrl+Q → Quit
-- [x] Ctrl+R → Reload from disk
+### 2.4 Keyboard Bindings ✅ DONE
+- [x] s → Save changes
+- [x] q → Quit
+- [x] r → Reload from disk
 - [x] ? → Show help
-- [ ] Enter → Edit selected value
-- [ ] Tab → Next locale input
-- [ ] Shift+Tab → Previous locale input
-- [ ] Escape → Cancel edit
-- [ ] Ctrl+N → New key
+- [x] e → Edit selected value
+- [x] Tab → Next locale input (in modal)
+- [x] Escape → Cancel edit
+- [x] n → New key
 - [x] d → Delete key (with Enter/Escape confirmation)
-- [ ] / → Search/filter mode
+- [x] / → Search/filter mode
 
-**Next step**: Add edit mode bindings
-
-### 2.5 Status Bar ✅
+### 2.5 Dashboard ✅ DONE
 - [x] Show coverage per locale
 - [x] Display unsaved changes
 - [x] Show last action (Save, Reload, etc)
 - [x] Update in real-time
-- ✅ Implemented in `StatusPane`
+- [x] Visual indicators (Green/Red)
+- ✅ Implemented in `StatusDisplay`
 
 ---
 
@@ -161,7 +153,6 @@ Pick one of these to unblock the others:
 ```python
 # Add to TreePane:
 - Mouse click support (already in Textual)
-- Right-click → "Add missing key to all locales"
 - Double-click → Enter edit mode
 - [x] 'd' → Delete key (with Enter/Escape confirmation)
 ```
@@ -183,7 +174,7 @@ Pick one of these to unblock the others:
 
 ## 🧪 Testing Strategy
 
-### Unit Tests (not yet written)
+### Unit Tests (43 tests passing ✅)
 ```python
 tests/
 ├── test_loader.py      # File discovery & parsing
@@ -292,4 +283,4 @@ Test with 10k+ keys coming soon.
 ---
 
 **Last updated**: December 16, 2025
-**Status**: Phase 1 ✅ | Phase 2 🔧 | Phase 3 📋
+**Status**: Phase 1 ✅ | Phase 2 ✅ | Phase 3 📋

@@ -25,14 +25,14 @@ lazyi18n brings the UX of lazygit to translation management.
 - [x] Textual app scaffold with three-pane layout
 - [x] Tree widget for keys with gap highlighting (⚠️ missing, ✓ complete)
 - [x] Values pane showing translations per locale
-- [x] Status bar with coverage metrics
+- [x] **NEW!** Dashboard with coverage stats & metrics
 - [x] **NEW!** Single-key shortcuts (q, s, r, ?, e)
 - [x] **NEW!** Inline editing mode with modal dialog
 - [x] **NEW!** Tab navigation in edit mode
 - [x] **NEW!** 43 comprehensive unit tests
-- [x] **NEW!** Search/filter by key name (/)
+- [x] **NEW!** Search/filter by key AND value (/)
 - [x] **NEW!** Key creation wizard (n)
-- [x] **NEW!** Bulk fill missing translations (b)
+- [x] **NEW!** Safety checks for Quit/Reload
 
 ### Phase 3: Integration 📋 PLANNED
 - [ ] CLI packaging with argparse
