@@ -1,0 +1,9 @@
+include README.md
+include LICENSE
+include requirements.txt
+include CHECKLIST.md
+include STATUS.txt
+include lazyi18n.sh
+include nvim-plugin-lazyi18n.lua
+include quickstart.py
+recursive-include examples *.json

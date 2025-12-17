@@ -1,15 +1,9 @@
 #!/usr/bin/env python3
 """
 lazyi18n - A TUI for managing i18next translation files.
-
-Enhanced version v3 with:
-- Inline editing
-- Single-key shortcuts
-- Search/filter functionality
-- New key creation wizard
 """
 
-__version__ = "3.0.0"
+__version__ = "0.1.0"
 
 import sys
 
