@@ -1,0 +1,52 @@
+name: Publish Release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build-and-publish:
+    name: Build and Upload Assets
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Required to upload assets to the release
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+
+    - name: Install build tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install build
+
+    - name: Extract version from tag
+      id: get_version
+      run: |
+        # Strip 'v' prefix if present (e.g., v1.0.0 -> 1.0.0)
+        VERSION=${GITHUB_REF#refs/tags/v}
+        echo "VERSION=$VERSION" >> $GITHUB_ENV
+        echo "Detected version: $VERSION"
+
+    - name: Update pyproject.toml version
+      run: |
+        # Update the version in pyproject.toml to match the release tag
+        # This ensures the built artifacts have the correct version
+        sed -i 's/^version = ".*"/version = "${{ env.VERSION }}"/' pyproject.toml
+        
+        # Verify the change
+        grep "^version =" pyproject.toml
+
+    - name: Build package
+      run: python -m build
+
+    - name: Upload Release Assets
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh release upload ${{ github.event.release.tag_name }} dist/*
