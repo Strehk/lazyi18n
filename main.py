@@ -59,7 +59,6 @@ class HelpScreen(Screen):
                 "",
                 "[bold]Keys[/]",
                 "  n  Create a new key with per-locale values",
-                "  b  Bulk fill missing translations per locale",
                 "",
                 "[bold]Project[/]",
                 "  s  Save all changes to disk",
@@ -297,6 +296,10 @@ class NewKeyScreen(Screen):
                 "[Esc] Cancel | [Ctrl+S] Create | [Tab] Next field",
                 id="new-key-help"
             )
+
+    def on_mount(self) -> None:
+        """Focus key input on mount."""
+        self.set_focus(self.key_input)
     
     def action_create(self) -> None:
         """Create the new key."""
@@ -338,138 +341,6 @@ class NewKeyScreen(Screen):
     
     def action_cancel(self) -> None:
         """Cancel creating new key."""
-        self.app.pop_screen()
-
-
-class BulkFillScreen(Screen):
-    """Modal screen for bulk filling missing translations."""
-    
-    BINDINGS = [
-        ("escape", "cancel", "Cancel"),
-        ("ctrl+s", "apply", "Apply"),
-    ]
-    
-    CSS = """
-    BulkFillScreen {
-        align: center middle;
-    }
-    
-    #bulk-dialog {
-        width: 80;
-        height: auto;
-        max-height: 80%;
-        border: thick $accent;
-        background: $surface;
-        padding: 1 2;
-    }
-    
-    #bulk-title {
-        text-align: center;
-        color: $accent;
-        text-style: bold;
-        margin-bottom: 1;
-    }
-    
-    .locale-label {
-        margin-top: 1;
-        color: $text-muted;
-    }
-    
-    Input {
-        margin-bottom: 1;
-    }
-    
-    #bulk-help {
-        dock: bottom;
-        text-align: center;
-        color: $text-muted;
-        margin-top: 1;
-    }
-    
-    #bulk-missing {
-        color: $text-muted;
-        margin-top: 1;
-    }
-    
-    #error-message {
-        color: $error;
-        text-align: center;
-        margin-top: 1;
-    }
-    """
-    
-    def __init__(self, project: TranslationProject):
-        super().__init__()
-        self.project = project
-        self.inputs = {}
-        self.error_label = None
-        self.missing_keys = []
-        self.missing_by_locale = {}
-    
-    def compose(self) -> ComposeResult:
-        """Compose the bulk fill dialog."""
-        gaps = self.project.get_gaps()
-        self.missing_keys = sorted(gaps.keys())
-        self.missing_by_locale = {locale: [] for locale in self.project.get_locales()}
-        for key, gap in gaps.items():
-            for locale in gap.missing_in:
-                self.missing_by_locale[locale].append(key)
-        
-        with VerticalScroll(id="bulk-dialog"):
-            yield Label("Bulk Fill Missing Translations", id="bulk-title")
-            
-            # Show missing summary
-            summary_lines = ["Missing keys:"]
-            for locale, keys in self.missing_by_locale.items():
-                summary_lines.append(f"  {locale}: {len(keys)} missing")
-            missing_text = "\n".join(summary_lines)
-            yield Label(missing_text, id="bulk-missing")
-            
-            for locale in self.project.get_locales():
-                yield Label(f"Fill for {locale} (optional):", classes="locale-label")
-                input_widget = Input(
-                    placeholder=f"Enter value to apply to {len(self.missing_by_locale.get(locale, []))} missing keys..."
-                )
-                # Track inputs by locale via self.inputs dict
-                self.inputs[locale] = input_widget
-                yield input_widget
-            
-            self.error_label = Label("", id="error-message")
-            yield self.error_label
-            
-            yield Label(
-                "[Esc] Cancel | [Ctrl+S] Apply to missing keys",
-                id="bulk-help"
-            )
-    
-    def action_apply(self) -> None:
-        """Apply bulk fill to missing translations."""
-        if not self.missing_keys:
-            self.error_label.update("[red][/] No missing translations to fill")
-            return
-        
-        any_value = False
-        for locale, input_widget in self.inputs.items():
-            val = input_widget.value.strip()
-            if not val:
-                continue
-            any_value = True
-            for key in self.missing_by_locale.get(locale, []):
-                self.project.set_key_value(locale, key, val)
-        
-        if not any_value:
-            self.error_label.update("[red][/] Provide at least one value to apply")
-            return
-        
-        if hasattr(self.app, 'tree_pane'):
-            self.app.tree_pane.rebuild(self.app.tree_pane.search_term)
-        if hasattr(self.app, 'status_pane'):
-            self.app.status_pane.action = "[green][/] Bulk applied"
-        
-        self.app.pop_screen()
-    
-    def action_cancel(self) -> None:
-        """Cancel bulk fill."""
         self.app.pop_screen()
 
 
@@ -836,7 +707,6 @@ class ValuesPane(Static):
                 "  [cyan]e[/]     Edit translations\n"
                 "  [cyan]/[/]     Search/filter\n"
                 "  [cyan]n[/]     New key\n"
-                "  [cyan]b[/]     Bulk fill missing\n"
                 "  [cyan]s[/]     Save changes\n"
                 "  [cyan]r[/]     Reload from disk\n"
                 "  [cyan]q[/]     Quit\n"
@@ -945,7 +815,7 @@ class StatusDisplay(Static):
              
         # Key hints (compact)
         lines.append("")
-        lines.append("[dim]e:edit /:search n:new b:bulk s:save r:reload q:quit[/]")
+        lines.append("[dim]e:edit /:search n:new s:save r:reload q:quit[/]")
         
         return "\n".join(lines)
     
@@ -986,6 +856,8 @@ class StatusPane(Container):
 
 class LazyI18nApp(App):
     """Textual application for lazyi18n."""
+    
+    TITLE = "LazyI18n"
     
     CSS = """
     Screen {
@@ -1043,7 +915,6 @@ class LazyI18nApp(App):
         ("e", "edit", "Edit"),
         ("/", "search", "Search"),
         ("n", "new_key", "New Key"),
-        ("b", "bulk_fill", "Bulk Fill"),
         ("d", "delete_key", "Delete"),
         ("escape", "cancel_search", "Cancel Search"),
     ]
@@ -1143,12 +1014,6 @@ class LazyI18nApp(App):
         if self.is_searching:
             return
         self.push_screen(NewKeyScreen(self.project))
-    
-    def action_bulk_fill(self) -> None:
-        """Bulk fill missing translations."""
-        if self.is_searching:
-            return
-        self.push_screen(BulkFillScreen(self.project))
     
     def action_delete_key(self) -> None:
         """Delete the selected key with confirmation."""
