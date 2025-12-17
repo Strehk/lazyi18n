@@ -76,5 +76,6 @@ jobs:
         formula-name: lazyi18n-nightly
         homebrew-tap: strehk/homebrew-lazyi18n
         download-url: https://github.com/${{ github.repository }}/releases/download/nightly/lazyi18n-${{ env.VERSION }}.tar.gz
+        base-branch: main
       env:
         COMMITTER_TOKEN: ${{ secrets.COMMITTER_TOKEN }}
