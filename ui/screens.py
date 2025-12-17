@@ -1,9 +1,34 @@
 from textual.app import ComposeResult
 from textual.containers import VerticalScroll
 from textual.screen import Screen
-from textual.widgets import Input, Label
+from textual.widgets import Input, Label, LoadingIndicator
 
 from core.project import TranslationProject
+
+
+class LoadingScreen(Screen):
+    """Screen shown while loading translations."""
+
+    CSS = """
+    LoadingScreen {
+        align: center middle;
+        background: $surface;
+    }
+    
+    LoadingIndicator {
+        height: auto;
+        margin-bottom: 2;
+        color: $accent;
+    }
+    
+    Label {
+        text-align: center;
+    }
+    """
+
+    def compose(self) -> ComposeResult:
+        yield LoadingIndicator()
+        yield Label("Loading translations...", id="loading-label")
 
 
 class HelpScreen(Screen):

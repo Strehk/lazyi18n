@@ -14,6 +14,7 @@ from ui.screens import (
     NewKeyScreen,
     QuitConfirmScreen,
     ReloadConfirmScreen,
+    LoadingScreen,
 )
 
 
@@ -119,6 +120,27 @@ class LazyI18nApp(App):
         if self.status_pane:
             self.status_pane.action = "Ready"
             self.status_pane.update_status()
+
+        # Show loading screen and start loading
+        self.push_screen(LoadingScreen())
+        self.run_worker(self.load_project, thread=True)
+
+    def load_project(self) -> None:
+        """Load the project in a background thread."""
+        success = self.project.load()
+        self.call_from_thread(self.on_project_loaded, success)
+
+    def on_project_loaded(self, success: bool) -> None:
+        """Handle project load completion."""
+        self.pop_screen()  # Remove loading screen
+
+        if not success:
+            self.notify("Failed to load translations", severity="error")
+            return
+
+        # Rebuild tree now that data is loaded
+        if self.tree_pane:
+            self.tree_pane.rebuild()
 
         if self.initial_key:
             all_keys = self.project.get_all_keys()

@@ -4,6 +4,8 @@ Translation file loader - handles discovering and loading i18next JSON files.
 
 import json
 import re
+import pickle
+import hashlib
 from pathlib import Path
 from typing import Dict, Optional, List
 from dataclasses import dataclass
@@ -25,6 +27,47 @@ class TranslationFileLoader:
         self.directory = Path(directory)
         if not self.directory.exists():
             raise FileNotFoundError(f"Directory not found: {self.directory}")
+
+    def _get_cache_dir(self) -> Path:
+        """Get the directory for storing cache files."""
+        cache_dir = self.directory / ".lazyi18n" / "cache"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        return cache_dir
+
+    def _get_cache_path(self, file_path: Path) -> Path:
+        """Get the cache file path for a given source file."""
+        # Create a unique hash for the file path to avoid collisions
+        file_hash = hashlib.md5(str(file_path.resolve()).encode()).hexdigest()
+        return self._get_cache_dir() / f"{file_path.stem}_{file_hash}.pickle"
+
+    def _load_file(self, file_path: Path) -> Dict:
+        """Load a single file, using cache if available and valid."""
+        cache_path = self._get_cache_path(file_path)
+
+        # Try loading from cache
+        if cache_path.exists():
+            try:
+                # Check if cache is newer than source file
+                if cache_path.stat().st_mtime > file_path.stat().st_mtime:
+                    with open(cache_path, "rb") as f:
+                        return pickle.load(f)
+            except Exception:
+                # Ignore cache errors and fall back to loading from source
+                pass
+
+        # Load from source
+        with open(file_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        # Save to cache
+        try:
+            with open(cache_path, "wb") as f:
+                pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
+        except Exception:
+            # Ignore cache write errors
+            pass
+
+        return data
 
     def discover_locales(self) -> List[str]:
         """
@@ -69,8 +112,7 @@ class TranslationFileLoader:
                     else:
                         continue
 
-                with open(file_path, "r", encoding="utf-8") as f:
-                    data = json.load(f)
+                data = self._load_file(file_path)
 
                 # Only accept object-based locale files
                 if not isinstance(data, dict):

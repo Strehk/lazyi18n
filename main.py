@@ -44,10 +44,6 @@ def main():
 
     tui = LazyI18nTUI(args.directory, initial_key=args.edit)
 
-    if not tui.load():
-        print("Error: Failed to load translations from", args.directory)
-        sys.exit(1)
-
     app = tui.create_app()
     app.run()
 
