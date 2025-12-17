@@ -33,22 +33,24 @@ class HelpScreen(Screen):
             yield Label("LazyI18n Help", id="help-title")
             help_lines = [
                 "[bold]Navigation[/]",
-                "  ↑/↓  Move selection in left tree",
-                "  /    Search/filter keys (type to filter; Esc cancels; Enter accepts)",
+                "  󰁅/󰁝    Move selection in left tree",
+                "  /      Search/filter keys (type to filter; Esc cancels; Enter accepts)",
+                "  e      Toggle edited keys filter",
+                "  m      Toggle missing translations filter",
                 "",
                 "[bold]Editing[/]",
-                "  e  Edit selected key",
-                "  d  Delete selected key (with confirmation)",
+                "  Space  Edit selected key (or toggle branch)",
+                "  d      Delete selected key (with confirmation)",
                 "  In editor: Tab/Enter next field; Ctrl+S save; Esc cancel; empty value deletes",
                 "  Live preview updates in right pane while typing",
                 "",
                 "[bold]Keys[/]",
-                "  n  Create a new key with per-locale values",
+                "  n      Create a new key with per-locale values",
                 "",
                 "[bold]Project[/]",
-                "  s  Save all changes to disk",
-                "  r  Reload translations from disk",
-                "  q  Quit",
+                "  s      Save all changes to disk",
+                "  r      Reload translations from disk",
+                "  q      Quit",
             ]
             yield Label("\n".join(help_lines), id="help-body")
             yield Label("Press Esc to close", id="help-footer")
@@ -169,7 +171,7 @@ class EditScreen(Screen):
             self.app.values_pane.refresh()
         
         if hasattr(self.app, 'tree_pane') and self.app.tree_pane:
-            self.app.tree_pane.rebuild(self.app.tree_pane.search_term)
+            self.app.tree_pane.rebuild(self.app.search_buffer, self.app.show_staged, self.app.show_missing)
         
         if hasattr(self.app, 'status_pane') and self.app.status_pane:
             self.app.status_pane.update_status()
@@ -318,7 +320,7 @@ class NewKeyScreen(Screen):
         
         # Notify main app to rebuild tree
         if hasattr(self.app, 'tree_pane'):
-            self.app.tree_pane.rebuild(self.app.search_buffer if self.app.is_searching else "")
+            self.app.tree_pane.rebuild(self.app.search_buffer, self.app.show_staged, self.app.show_missing)
         if hasattr(self.app, 'status_pane'):
             self.app.status_pane.action = f"[green][/] Created key: {key}"
         
@@ -404,7 +406,7 @@ class DeleteConfirmScreen(Screen):
         
         # Update the main app
         if hasattr(self.app, 'tree_pane'):
-            self.app.tree_pane.rebuild(self.app.tree_pane.search_term)
+            self.app.tree_pane.rebuild(self.app.search_buffer, self.app.show_staged, self.app.show_missing)
         if hasattr(self.app, 'values_pane'):
             self.app.values_pane.selected_key = ""
         if hasattr(self.app, 'status_pane'):

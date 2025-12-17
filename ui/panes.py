@@ -2,8 +2,16 @@ from textual.app import ComposeResult
 from textual.containers import Container
 from textual.reactive import reactive
 from textual.widgets import Input, Static, Tree
+from textual.binding import Binding
 
 from core.project import TranslationProject
+
+
+class TranslationTree(Tree):
+    """Custom Tree widget to handle keybindings."""
+    BINDINGS = [
+        Binding("space", "app.edit", "Edit / Toggle"),
+    ]
 
 
 class TreePane(Static):
@@ -18,12 +26,12 @@ class TreePane(Static):
     
     def compose(self) -> ComposeResult:
         """Compose the tree pane."""
-        self._tree = Tree("Keys")
+        self._tree = TranslationTree("Keys")
         self._tree.root.expand()
         self._build_tree()
         yield self._tree
     
-    def _build_tree(self, filter_term: str = "") -> None:
+    def _build_tree(self, filter_term: str = "", show_staged: bool = False, show_missing: bool = False) -> None:
         """Build the tree from translation keys."""
         if not self._tree:
             return
@@ -51,6 +59,22 @@ class TreePane(Static):
                     if val and term in str(val).lower():
                         filtered_keys.append(key)
                         break
+            keys = filtered_keys
+        
+        # Filter by staged/missing
+        if show_staged or show_missing:
+            filtered_keys = []
+            for key in keys:
+                is_staged = key in changed_keys
+                is_missing = key in gaps
+                
+                if show_staged and show_missing:
+                    if is_staged or is_missing:
+                        filtered_keys.append(key)
+                elif show_staged and is_staged:
+                    filtered_keys.append(key)
+                elif show_missing and is_missing:
+                    filtered_keys.append(key)
             keys = filtered_keys
         
         # Group by category (first part before dot) and identify top-level keys
@@ -105,13 +129,13 @@ class TreePane(Static):
                     label = f"[green][/] {label}"
                 cat_node.add_leaf(label, data=key)
     
-    def rebuild(self, filter_term: str = "") -> None:
+    def rebuild(self, filter_term: str = "", show_staged: bool = False, show_missing: bool = False) -> None:
         """Rebuild the tree."""
         self.search_term = filter_term
         if self._tree:
             self._tree.clear()
             self._tree.root.expand()
-            self._build_tree(filter_term)
+            self._build_tree(filter_term, show_staged, show_missing)
     
     def clear_filter(self) -> None:
         """Clear search filter."""
@@ -144,15 +168,7 @@ class ValuesPane(Static):
                 " ####### #    # ######   #   ### #####  #####  #    # \n[/]"
                 "\n\n"                                                                                        
                 "[dim]Select a key from the tree[/]\n\n"
-                "[bold]Keyboard Shortcuts:[/]\n"
-                "  [cyan]↑/↓[/]   Navigate tree\n"
-                "  [cyan]e[/]     Edit translations\n"
-                "  [cyan]/[/]     Search/filter\n"
-                "  [cyan]n[/]     New key\n"
-                "  [cyan]s[/]     Save changes\n"
-                "  [cyan]r[/]     Reload from disk\n"
-                "  [cyan]q[/]     Quit\n"
-                "  [cyan]?[/]     Help\n"
+                "Press [cyan]?[/] for Help"
             )
         
         lines = [f"[bold cyan reverse] {self.selected_key} [/]\n"]
@@ -167,9 +183,6 @@ class ValuesPane(Static):
                 lines.append(f"[green] {locale}[/green]: {value}")
             else:
                 lines.append(f"[red] {locale}[/red]: [dim]MISSING[/]")
-        
-        lines.append("")
-        lines.append("[dim italic]Press e to edit[/]")
         
         return "\n".join(lines)
 
@@ -191,6 +204,8 @@ class StatusDisplay(Static):
     
     unsaved: reactive[list] = reactive([])
     action: reactive[str] = reactive("Ready")
+    show_staged: reactive[bool] = reactive(False)
+    show_missing: reactive[bool] = reactive(False)
     
     def __init__(self, project: TranslationProject):
         super().__init__()
@@ -239,6 +254,16 @@ class StatusDisplay(Static):
                 
                 lines.append(f"  {locale:<5} [{color}]{bar}[/] {pct:>5.1f}%  ([dim]{present}/{total_keys}[/])")
         lines.append("")
+
+        # Active Filters
+        if self.show_staged or self.show_missing:
+            filters = []
+            if self.show_staged:
+                filters.append("[yellow]Edited (e)[/]")
+            if self.show_missing:
+                filters.append("[red]Missing (m)[/]")
+            lines.append(f"  [bold]Filters:[/] {', '.join(filters)}")
+            lines.append("")
 
         # 3. System Status
         lines.append(f"[bold]System[/]")
@@ -294,3 +319,7 @@ class StatusPane(Container):
         
     def update_status(self) -> None:
         self.status_display.update_status()
+
+    def update_filters(self, show_staged: bool, show_missing: bool) -> None:
+        self.status_display.show_staged = show_staged
+        self.status_display.show_missing = show_missing

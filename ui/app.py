@@ -75,10 +75,12 @@ class LazyI18nApp(App):
         ("q", "quit", "Quit"),
         ("r", "reload", "Reload"),
         ("?", "help", "Help"),
-        ("e", "edit", "Edit"),
+        ("space", "edit", "Edit"),
         ("/", "search", "Search"),
         ("n", "new_key", "New Key"),
         ("d", "delete_key", "Delete"),
+        ("e", "toggle_staged", "Toggle Edited Filter"),
+        ("m", "toggle_missing", "Toggle Missing Filter"),
         ("escape", "cancel_search", "Cancel Search"),
     ]
     
@@ -90,6 +92,8 @@ class LazyI18nApp(App):
         self.status_pane = None
         self.search_buffer = ""
         self.is_searching = False
+        self.show_staged = False
+        self.show_missing = False
     
     def compose(self) -> ComposeResult:
         """Compose the UI."""
@@ -135,7 +139,7 @@ class LazyI18nApp(App):
     def on_search_changed(self, event: Input.Changed) -> None:
         """Handle search input changes."""
         self.search_buffer = event.value
-        self.tree_pane.rebuild(self.search_buffer)
+        self.tree_pane.rebuild(self.search_buffer, self.show_staged, self.show_missing)
     
     @on(Input.Submitted, "#search-input")
     def on_search_submitted(self, event: Input.Submitted) -> None:
@@ -147,6 +151,22 @@ class LazyI18nApp(App):
         # Focus tree to allow navigation
         self.set_focus(self.tree_pane)
     
+    def action_toggle_staged(self) -> None:
+        """Toggle staged keys filter."""
+        if self.is_searching:
+            return
+        self.show_staged = not self.show_staged
+        self.tree_pane.rebuild(self.search_buffer, self.show_staged, self.show_missing)
+        self.status_pane.update_filters(self.show_staged, self.show_missing)
+
+    def action_toggle_missing(self) -> None:
+        """Toggle missing keys filter."""
+        if self.is_searching:
+            return
+        self.show_missing = not self.show_missing
+        self.tree_pane.rebuild(self.search_buffer, self.show_staged, self.show_missing)
+        self.status_pane.update_filters(self.show_staged, self.show_missing)
+
     def action_search(self) -> None:
         """Enter search mode."""
         self.is_searching = True
@@ -166,9 +186,18 @@ class LazyI18nApp(App):
             self.set_focus(self.tree_pane)
     
     def action_edit(self) -> None:
-        """Edit the selected key."""
+        """Edit the selected key or toggle branch expansion."""
         if self.is_searching:
             return
+            
+        # If we are on a branch node (no data), toggle expansion
+        # We need to access the tree widget directly
+        if self.tree_pane and hasattr(self.tree_pane, '_tree'):
+            node = self.tree_pane._tree.cursor_node
+            if node and node.allow_expand and not node.is_leaf:
+                node.toggle()
+                return
+
         if self.values_pane.selected_key:
             self.push_screen(EditScreen(self.project, self.values_pane.selected_key))
     
@@ -203,7 +232,7 @@ class LazyI18nApp(App):
             self.status_pane.action = "[green][/] Saved to disk"
             self.status_pane.update_status()
             # Rebuild tree to clear pencil indicators since everything is now saved
-            self.tree_pane.rebuild(self.tree_pane.search_term)
+            self.tree_pane.rebuild(self.search_buffer, self.show_staged, self.show_missing)
             # Refresh values pane
             self.values_pane.refresh()
         else:
@@ -214,7 +243,7 @@ class LazyI18nApp(App):
         if self.project.reload():
             self.status_pane.action = "[green][/] Reloaded"
             self.status_pane.update_status()
-            self.tree_pane.rebuild(self.tree_pane.search_term)
+            self.tree_pane.rebuild(self.search_buffer, self.show_staged, self.show_missing)
             self.values_pane.selected_key = ""
         else:
             self.status_pane.action = "[red][/] Reload failed"

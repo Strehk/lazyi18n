@@ -86,9 +86,11 @@ python main.py examples/
 
 ### 4. Navigate and explore
 - **Arrow keys**: Navigate the tree
-- **Enter** or **e**: Edit selected translation (opens modal)
+- **Space**: Edit selected translation (opens modal) or toggle branch
 - **d**: Delete selected key (with confirmation)
 - **/**: Search/filter keys
+- **e**: Toggle edited keys filter
+- **m**: Toggle missing translations filter
 - **n**: Create a new key
 - **b**: Bulk fill missing translations
 - **s**: Save changes
@@ -102,7 +104,7 @@ python main.py examples/
 
 1. **Launch**: `./lazyi18n.sh /path/to/translations` or `lazyi18n /path/to/locales`
 2. **Browse**: Navigate tree to find keys with gaps (marked with ⚠️) or complete (✓)
-3. **Edit**: Select a key, press **Enter** to open edit modal
+3. **Edit**: Select a key, press **Space** to open edit modal
 4. **Translate**: Fill in values for each locale, use **Tab** to navigate
 5. **Save**: Press **Ctrl+S** in edit mode, then **s** in main view to write to disk
 6. **Verify**: Coverage bar updates in real-time, tree markers refresh on save
