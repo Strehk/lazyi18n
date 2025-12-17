@@ -76,38 +76,34 @@ Press `?` within the application to see the full list of keybindings.
 
 ## Neovim Integration
 
-You can integrate `lazyi18n` directly into Neovim using `toggleterm.nvim` or `snacks.nvim`.
+Where lazyi18n truly begins to shine is its integration with Neovim, especially when using LazyVim. You can open lazyi18n in a floating terminal window directly from your editor, even directly going to the edit mode for what is currently under your cursor. It makes managing and especially creating translations a breeze.
 
-### Using `snacks.nvim` (Recommended for LazyVim)
+There are 1000s of ways to set this up and I highly recommend adapting it to your own workflow and files, but here is my configuration to get you started. I am using `snacks.nvim` in my LazyVim setup, but you could achieve similar results with `toggleterm.nvim` or any other terminal plugin.
 
-Add this to your `lua/plugins/lazyi18n.lua`:
+<details>
+<summary>### Opening lazyi18n in Neovim</summary>
 
 ```lua
 return {
   {
     "folke/snacks.nvim",
-    opts = {
-      terminal = {
-        win = {
-          style = "lazyi18n",
-        },
-      },
-      styles = {
-        lazyi18n = {
-          width = 0.9,
-          height = 0.9,
-          border = "rounded",
-          title = " lazyi18n ",
-          title_pos = "center",
-          ft = "lazyi18n",
-        },
-      },
-    },
+    optional = true,
     keys = {
       {
-        "<leader>ti",
+        "<leader>tt", -- I have this setup under tt like lazygit (gg)
         function()
-          Snacks.terminal("lazyi18n", { style = "lazyi18n" })
+          local lazyi18n_path = vim.fn.exepath("lazyi18n")
+
+          local command = string.format("%s", lazyi18n_path)
+
+          Snacks.terminal(command, {
+            win = {
+              position = "float",
+              border = "rounded",
+              width = 0.9,
+              height = 0.9,
+            },
+          })
         end,
         desc = "Open lazyi18n",
       },
@@ -116,34 +112,84 @@ return {
 }
 ```
 
-### Using `toggleterm.nvim`
+</details>
+
+<details>
+<summary>### Opening lazyi18n in edit mode for the key under the cursor</summary>
 
 ```lua
 return {
   {
-    "akinsho/toggleterm.nvim",
+    "folke/snacks.nvim",
+    optional = true,
     keys = {
       {
-        "<leader>ti",
+        "<leader>te", -- I have this setup under te like translate edit
         function()
-          local Terminal = require("toggleterm.terminal").Terminal
-          local lazyi18n = Terminal:new({
-            cmd = "lazyi18n",
-            direction = "float",
-            float_opts = {
-              border = "curved",
-              width = math.floor(vim.o.columns * 0.9),
-              height = math.floor(vim.o.lines * 0.9),
+          -- Get the current line text
+          local line = vim.api.nvim_get_current_line()
+          -- Get the cursor position (1-based row, 0-based col)
+          local col = vim.api.nvim_win_get_cursor(0)[2]
+
+          -- This pattern looks for:
+          -- 1. Optional characters ending in a dot (prefix like 'm.' or 't.')
+          -- 2. Captures everything non-paren until a '('
+          -- The %b() match is powerful but simple pattern matching is safer here for cursor context.
+
+          -- Strategy: Find the full string "prefix.key.chain(" around the cursor
+          -- We expand <cWORD> first to get a rough context, usually grabs "m.auth.title("
+          local cWORD = vim.fn.expand("<cWORD>")
+
+          -- Extract what is inside the dots and parens
+          -- Pattern explanation:
+          -- ^.-%. : Match start, any char, until a literal dot (removes m.)
+          -- (.-)  : Capture everything
+          -- %($   : Until the literal open parenthesis at the end
+          local key = cWORD:match("^.-%.(.-)%($")
+
+          -- Fallback: If cWORD has trailing chars like "m.key()," stripping trailing chars
+          if not key then
+            key = cWORD:match("^.-%.([%w_%.]+)")
+          end
+
+          -- Validate we actually have a key worth adding
+          if not key or key == "" then
+            vim.notify("Could not detect a valid translation key under cursor.", vim.log.levels.WARN)
+            return
+          end
+
+          local lazyi18n_path = vim.fn.exepath("lazyi18n")
+
+          if lazyi18n_path == "" then
+            vim.notify("lazyi18n executable not found", vim.log.levels.ERROR)
+            return
+          end
+
+          -- Construct the specific command: lazyi18n --edit <key>
+          -- Note: Your snippet used --edit, so I kept that.
+          -- If you wanted --new as per your first message, swap it back!
+          local command = string.format("%s --edit %s", lazyi18n_path, key)
+
+          vim.notify("Editing key: " .. key, vim.log.levels.INFO)
+
+          Snacks.terminal(command, {
+            win = {
+              position = "float",
+              border = "rounded",
+              width = 0.9,
+              height = 0.9,
             },
+            interactive = true, -- Keep it open so you can save/edit in the TUI
           })
-          lazyi18n:toggle()
         end,
-        desc = "Open lazyi18n",
+        desc = "Add or edit i18n key under cursor",
       },
     },
   },
 }
 ```
+
+</details>
 
 ## Usage
 
