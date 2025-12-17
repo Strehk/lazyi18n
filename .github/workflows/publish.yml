@@ -28,19 +28,22 @@ jobs:
     - name: Extract version from tag
       id: get_version
       run: |
-        # Strip 'v' prefix if present (e.g., v1.0.0 -> 1.0.0)
-        VERSION=${GITHUB_REF#refs/tags/v}
-        echo "VERSION=$VERSION" >> $GITHUB_ENV
+        # Extract tag name from GITHUB_REF (refs/tags/v1.0.0 -> v1.0.0)
+        TAG_NAME=${GITHUB_REF#refs/tags/}
+        # Remove 'v' prefix if present (v1.0.0 -> 1.0.0)
+        VERSION=${TAG_NAME#v}
+        
         echo "Detected version: $VERSION"
+        echo "VERSION=$VERSION" >> $GITHUB_ENV
 
     - name: Update pyproject.toml version
       run: |
         # Update the version in pyproject.toml to match the release tag
-        # This ensures the built artifacts have the correct version
-        sed -i 's/^version = ".*"/version = "${{ env.VERSION }}"/' pyproject.toml
+        # Matches: version = "..." allowing for spaces
+        sed -i "s/^version[[:space:]]*=[[:space:]]*\".*\"/version = \"$VERSION\"/" pyproject.toml
         
         # Verify the change
-        grep "^version =" pyproject.toml
+        grep "^version" pyproject.toml
 
     - name: Build package
       run: python -m build
