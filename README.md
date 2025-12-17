@@ -1,40 +1,21 @@
-# lazyi18n 📚🎯
+# lazyI18n 📚🎯
 
 A terminal UI for managing i18next translation files, inspired by lazygit. Wrangle your nested JSON translation files with ease, identify missing translations at a glance, and maintain consistency across locales.
 
 ## Why lazyi18n?
 
 Editing i18n files manually is painful:
+- **No useful integration in your editor workflow**
 - **Missing translations** are hard to spot
 - **Nested JSON** is awkward to navigate
-- **No workflow** for bulk updates
 - **Manual comparison** between locales is tedious
 
-lazyi18n brings the UX of lazygit to translation management.
+lazyi18n brings the UX of lazygit to translation management. It's a TUI that helps you:
+- **Visualize translation keys** in a tree structure
+- **Highlight gaps** in translations across locales
+- **Integrate with LazyVim/Neovim** for seamless workflow
 
-## Features (Planned & Implemented)
-
-### Phase 1: Core ✅ COMPLETE
-- [x] File loader for discovering JSON files
-- [x] Flatten/unflatten utilities for dot-notation
-- [x] Gap analyzer for finding missing translations
-- [x] Safe JSON writer with atomic operations
-- [x] Central TranslationProject orchestrator
-
-### Phase 2: UI ✅ ENHANCED!
-- [x] Textual app scaffold with three-pane layout
-- [x] Tree widget for keys with gap highlighting (⚠️ missing, ✓ complete)
-- [x] Values pane showing translations per locale
-- [x] **NEW!** Dashboard with coverage stats & metrics
-- [x] **NEW!** Single-key shortcuts (q, s, r, ?, e)
-- [x] **NEW!** Inline editing mode with modal dialog
-- [x] **NEW!** Tab navigation in edit mode
-- [x] **NEW!** 43 comprehensive unit tests
-- [x] **NEW!** Search/filter by key AND value (/)
-- [x] **NEW!** Key creation wizard (n)
-- [x] **NEW!** Safety checks for Quit/Reload
-
-### Phase 3: Integration 📋 PLANNED
+## Planned Features
 - [ ] CLI packaging with argparse
 - [ ] LazyVim/Neovim integration (toggleterm wrapper)
 - [ ] lazy.nvim plugin spec
@@ -65,8 +46,13 @@ lazyi18n/
 ## Installation
 
 ```bash
-git clone <repo>
+git clone https://github.com/Strehk/lazyi18n
 cd lazyi18n
+
+# Create virtual environment
+python3 -m venv .venv
+source .venv/bin/activate.fish  # or .venv/bin/activate for bash/zsh
+
 pip install -r requirements.txt
 
 # Or install in development mode
@@ -112,21 +98,6 @@ python main.py examples/
 - **Tab**: Next field (in edit mode)
 - **Escape**: Cancel edit
 
-### 5. Try inline editing!
-1. Navigate to any key with ↑/↓
-2. Press **Enter** to edit
-3. Modal dialog appears with input fields for all locales
-4. Use **Tab** to navigate between fields
-5. Press **Ctrl+S** to save or **Esc** to cancel
-6. Changes are tracked, use **s** in main view to save to disk
-
-### 6. Delete a key
-1. Navigate to the key you want to delete
-2. Press **d** to open delete confirmation
-3. Press **Enter** to confirm or **Esc** to cancel
-4. The key is deleted from all locales
-5. Press **s** in main view to save changes to disk
-
 ## Usage (Current Workflow)
 
 1. **Launch**: `./lazyi18n.sh /path/to/translations` or `lazyi18n /path/to/locales`
@@ -143,7 +114,7 @@ textual>=6.10.0     # TUI framework (by Will McGugan, creator of Rich)
 rich>=14.2.0        # Beautiful terminal rendering
 ```
 
-## LazyVim Integration (Phase 3)
+## LazyVim Integration
 
 ### Quick Setup
 
@@ -199,11 +170,8 @@ See [LAZYVIM_SETUP.md](LAZYVIM_SETUP.md) for detailed installation instructions.
 - [x] LazyVim integration config
 
 ### Next Up 🔨
-- [ ] Search/filter by key name (press /)
 - [ ] Bulk operations (fill all missing translations)
-- [ ] Key creation wizard (press n)
 - [ ] Pluralization rules support (i18next format)
-- [ ] Context/namespace support
 - [ ] Export/import for external translators (CSV)
 - [ ] Git diff integration
 - [ ] AI suggestions for missing translations
@@ -237,14 +205,8 @@ python3 -m coverage report
 
 ## License
 
-MIT
-
-## Acknowledgments
-
-- **Will McGugan** for Textual & Rich
-- **lazygit** for the UX inspiration
-- Your sanity, for finally getting a break from JSON wrangling
+MIT. See [LICENSE](LICENSE) for details.
 
 ---
 
-**Built with ❤️ for tired translators**
+**Built with ❤️ in Germany**
