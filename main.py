@@ -3,9 +3,13 @@
 lazyi18n - A TUI for managing i18next translation files.
 """
 
-__version__ = "0.1.0"
-
 import sys
+from importlib.metadata import version, PackageNotFoundError
+
+try:
+    __version__ = version("lazyi18n")
+except PackageNotFoundError:
+    __version__ = "unknown"
 
 from ui.app import LazyI18nTUI
 
