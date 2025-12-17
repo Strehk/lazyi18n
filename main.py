@@ -627,6 +627,72 @@ class QuitConfirmScreen(Screen):
         self.app.pop_screen()
 
 
+class ReloadConfirmScreen(Screen):
+    """Modal screen for confirming reload with unsaved changes."""
+    
+    BINDINGS = [
+        ("escape", "cancel", "Cancel"),
+        ("enter", "confirm", "Confirm"),
+    ]
+    
+    CSS = """
+    ReloadConfirmScreen {
+        align: center middle;
+        background: $background 80%;
+    }
+    
+    #reload-dialog {
+        width: 60;
+        height: auto;
+        border: thick $error;
+        background: $surface;
+        padding: 2;
+    }
+    
+    #reload-title {
+        text-align: center;
+        text-style: bold;
+        margin-bottom: 1;
+        color: $error;
+    }
+    
+    #reload-warning {
+        color: $text;
+        margin: 1 0;
+        text-align: center;
+    }
+    
+    #reload-help {
+        dock: bottom;
+        text-align: center;
+        color: $text-muted;
+        margin-top: 1;
+    }
+    """
+    
+    def compose(self) -> ComposeResult:
+        """Compose the reload confirmation dialog."""
+        with VerticalScroll(id="reload-dialog"):
+            yield Label("Unsaved Changes", id="reload-title")
+            yield Label(
+                "You have unsaved changes. Reloading will discard them.",
+                id="reload-warning"
+            )
+            yield Label(
+                "[bold red]Enter[/] Reload and discard | [Esc] Cancel",
+                id="reload-help"
+            )
+    
+    def action_confirm(self) -> None:
+        """Confirm reload."""
+        self.app.pop_screen()
+        self.app.perform_reload()
+    
+    def action_cancel(self) -> None:
+        """Cancel reload."""
+        self.app.pop_screen()
+
+
 class TreePane(Static):
     """Left pane with translation key tree."""
     
@@ -1072,10 +1138,8 @@ class LazyI18nApp(App):
         else:
             self.status_pane.action = "[red][/] Save failed"
     
-    def action_reload(self) -> None:
-        """Reload from disk."""
-        if self.is_searching:
-            return
+    def perform_reload(self) -> None:
+        """Execute the reload operation."""
         if self.project.reload():
             self.status_pane.action = "[green][/] Reloaded"
             self.status_pane.update_status()
@@ -1083,6 +1147,16 @@ class LazyI18nApp(App):
             self.values_pane.selected_key = ""
         else:
             self.status_pane.action = "[red][/] Reload failed"
+
+    def action_reload(self) -> None:
+        """Reload from disk."""
+        if self.is_searching:
+            return
+            
+        if self.project.has_unsaved_changes():
+            self.push_screen(ReloadConfirmScreen())
+        else:
+            self.perform_reload()
     
     def action_help(self) -> None:
         """Show help modal."""
