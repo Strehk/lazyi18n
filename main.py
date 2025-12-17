@@ -53,6 +53,7 @@ class HelpScreen(Screen):
                 "",
                 "[bold]Editing[/]",
                 "  e  Edit selected key",
+                "  d  Delete selected key (with confirmation)",
                 "  In editor: Tab/Enter next field; Ctrl+S save; Esc cancel; empty value deletes",
                 "  Live preview updates in right pane while typing",
                 "",
@@ -169,7 +170,12 @@ class EditScreen(Screen):
         """Save all changes to memory and close."""
         # Read current values from inputs
         for locale, input_widget in self.inputs.items():
-            new_value = input_widget.value.strip()
+            # Get the text from the Input widget - use the document if value doesn't work
+            if hasattr(input_widget, 'document') and input_widget.document:
+                new_value = input_widget.document.text.strip()
+            else:
+                new_value = (input_widget.value.strip() if input_widget.value else "")
+            
             if new_value:
                 self.project.set_key_value(locale, self.key, new_value)
             else:
@@ -474,6 +480,95 @@ class BulkFillScreen(Screen):
         self.app.pop_screen()
 
 
+class DeleteConfirmScreen(Screen):
+    """Modal screen for confirming key deletion."""
+    
+    BINDINGS = [
+        ("escape", "cancel", "Cancel"),
+        ("enter", "confirm", "Confirm Delete"),
+    ]
+    
+    CSS = """
+    DeleteConfirmScreen {
+        align: center middle;
+    }
+    
+    #delete-dialog {
+        width: 60;
+        height: auto;
+        border: heavy $error;
+        background: $surface;
+        padding: 1 2;
+    }
+    
+    #delete-title {
+        text-align: center;
+        color: $error;
+        text-style: bold;
+        margin-bottom: 1;
+    }
+    
+    #delete-key {
+        color: $text;
+        margin: 1 0;
+        text-align: center;
+    }
+    
+    #delete-warning {
+        color: $text;
+        margin: 1 0;
+        text-align: center;
+    }
+    
+    #delete-help {
+        dock: bottom;
+        text-align: center;
+        color: $text-muted;
+        margin-top: 1;
+    }
+    """
+    
+    def __init__(self, project: TranslationProject, key: str):
+        super().__init__()
+        self.project = project
+        self.key = key
+    
+    def compose(self) -> ComposeResult:
+        """Compose the delete confirmation dialog."""
+        with VerticalScroll(id="delete-dialog"):
+            yield Label("Delete Translation Key?", id="delete-title")
+            yield Label(f"[bold]{self.key}[/]", id="delete-key")
+            yield Label(
+                "This action cannot be undone. All translations for this key will be deleted.",
+                id="delete-warning"
+            )
+            yield Label(
+                "[bold green]Enter[/] Confirm | [Esc] Cancel",
+                id="delete-help"
+            )
+    
+    def action_confirm(self) -> None:
+        """Confirm and delete the key from all locales."""
+        # Delete the key from all locales
+        for locale in self.project.get_locales():
+            self.project.delete_key_value(locale, self.key)
+        
+        # Update the main app
+        if hasattr(self.app, 'tree_pane'):
+            self.app.tree_pane.rebuild(self.app.tree_pane.search_term)
+        if hasattr(self.app, 'values_pane'):
+            self.app.values_pane.selected_key = ""
+        if hasattr(self.app, 'status_pane'):
+            self.app.status_pane.action = f"✓ Deleted key: {self.key}"
+            self.app.status_pane.update_status()
+        
+        self.app.pop_screen()
+    
+    def action_cancel(self) -> None:
+        """Cancel deletion."""
+        self.app.pop_screen()
+
+
 class TreePane(Static):
     """Left pane with translation key tree."""
     
@@ -508,14 +603,33 @@ class TreePane(Static):
         if filter_term:
             keys = [k for k in keys if filter_term.lower() in k.lower()]
         
-        # Group by category
+        # Group by category (first part before dot) and identify top-level keys
         categories = {}
+        top_level_keys = []  # Keys without dots
+        
         for key in keys:
-            parts = key.split(".")
-            category = parts[0]
-            if category not in categories:
-                categories[category] = []
-            categories[category].append(key)
+            if "." in key:
+                parts = key.split(".")
+                category = parts[0]
+                if category not in categories:
+                    categories[category] = []
+                categories[category].append(key)
+            else:
+                top_level_keys.append(key)
+        
+        # Add top-level keys directly to root
+        for key in sorted(top_level_keys):
+            has_gap = key in gaps
+            has_unsaved = key == edited_key and unsaved_locales
+            
+            # Mark with status: unsaved, gap, or complete
+            if has_unsaved:
+                label = f"✏️  {key}"
+            elif has_gap:
+                label = f"⚠️  {key}"
+            else:
+                label = f"✓ {key}"
+            root.add_leaf(label, data=key)
         
         # Build tree with category warnings if any child has gaps
         for category in sorted(categories.keys()):
@@ -724,6 +838,7 @@ class LazyI18nApp(App):
         ("/", "search", "Search"),
         ("n", "new_key", "New Key"),
         ("b", "bulk_fill", "Bulk Fill"),
+        ("d", "delete_key", "Delete"),
     ]
     
     def __init__(self, project: TranslationProject):
@@ -829,6 +944,11 @@ class LazyI18nApp(App):
     def action_bulk_fill(self) -> None:
         """Bulk fill missing translations."""
         self.push_screen(BulkFillScreen(self.project))
+    
+    def action_delete_key(self) -> None:
+        """Delete the selected key with confirmation."""
+        if self.values_pane.selected_key:
+            self.push_screen(DeleteConfirmScreen(self.project, self.values_pane.selected_key))
 
     def action_save(self) -> None:
         """Save changes to disk and refresh UI."""

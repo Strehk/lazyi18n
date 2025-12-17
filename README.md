@@ -101,6 +101,7 @@ python main.py examples/
 ### 4. Navigate and explore
 - **Arrow keys**: Navigate the tree
 - **Enter** or **e**: Edit selected translation (opens modal)
+- **d**: Delete selected key (with confirmation)
 - **/**: Search/filter keys
 - **n**: Create a new key
 - **b**: Bulk fill missing translations
@@ -118,6 +119,13 @@ python main.py examples/
 4. Use **Tab** to navigate between fields
 5. Press **Ctrl+S** to save or **Esc** to cancel
 6. Changes are tracked, use **s** in main view to save to disk
+
+### 6. Delete a key
+1. Navigate to the key you want to delete
+2. Press **d** to open delete confirmation
+3. Press **Enter** to confirm or **Esc** to cancel
+4. The key is deleted from all locales
+5. Press **s** in main view to save changes to disk
 
 ## Usage (Current Workflow)
 

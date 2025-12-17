@@ -86,7 +86,7 @@ Building the beautiful TUI that users interact with.
 - [ ] Shift+Tab → Previous locale input
 - [ ] Escape → Cancel edit
 - [ ] Ctrl+N → New key
-- [ ] Ctrl+D → Delete key
+- [x] d → Delete key (with Enter/Escape confirmation)
 - [ ] / → Search/filter mode
 
 **Next step**: Add edit mode bindings
@@ -163,7 +163,7 @@ Pick one of these to unblock the others:
 - Mouse click support (already in Textual)
 - Right-click → "Add missing key to all locales"
 - Double-click → Enter edit mode
-- 'd' → Delete key
+- [x] 'd' → Delete key (with Enter/Escape confirmation)
 ```
 
 **Impact**: Faster navigation and bulk operations
