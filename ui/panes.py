@@ -104,9 +104,9 @@ class TreePane(Static):
 
             # Mark with status: unsaved, gap, or complete
             if has_unsaved:
-                label = f"[yellow][/]  {key}"
+                label = f"[yellow][/]  [bold yellow]{key}[/]"
             elif has_gap:
-                label = f"[red][/]  {key}"
+                label = f"[red][/]  [bold red]{key}[/]"
             else:
                 label = f"[green][/] {key}"
             root.add_leaf(label, data=key)
@@ -128,9 +128,9 @@ class TreePane(Static):
 
                 # Mark with status: unsaved, gap, or complete
                 if has_unsaved:
-                    label = f"[yellow][/]  {label}"
+                    label = f"[yellow][/]  [bold yellow]{label}[/]"
                 elif has_gap:
-                    label = f"[red][/]  {label}"
+                    label = f"[red][/]  [bold red]{label}[/]"
                 else:
                     label = f"[green][/] {label}"
                 cat_node.add_leaf(label, data=key)

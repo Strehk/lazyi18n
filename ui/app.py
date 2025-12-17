@@ -84,9 +84,10 @@ class LazyI18nApp(App):
         ("escape", "cancel_search", "Cancel Search"),
     ]
 
-    def __init__(self, project: TranslationProject):
+    def __init__(self, project: TranslationProject, initial_key: str | None = None):
         super().__init__()
         self.project = project
+        self.initial_key = initial_key
         self.tree_pane = None
         self.values_pane = None
         self.status_pane = None
@@ -118,6 +119,13 @@ class LazyI18nApp(App):
         if self.status_pane:
             self.status_pane.action = "Ready"
             self.status_pane.update_status()
+
+        if self.initial_key:
+            all_keys = self.project.get_all_keys()
+            if self.initial_key in all_keys:
+                self.push_screen(EditScreen(self.project, self.initial_key))
+            else:
+                self.push_screen(NewKeyScreen(self.project, initial_key=self.initial_key))
 
     @on(Tree.NodeSelected)
     def on_tree_select(self, event: Tree.NodeSelected) -> None:
@@ -274,9 +282,10 @@ class LazyI18nApp(App):
 class LazyI18nTUI:
     """Main TUI wrapper."""
 
-    def __init__(self, directory: Path | str = "."):
+    def __init__(self, directory: Path | str = ".", initial_key: str | None = None):
         self.directory = Path(directory)
         self.project = TranslationProject(self.directory)
+        self.initial_key = initial_key
 
     def load(self) -> bool:
         """Load translations from disk."""
@@ -284,4 +293,4 @@ class LazyI18nTUI:
 
     def create_app(self) -> LazyI18nApp:
         """Create and return the Textual app."""
-        return LazyI18nApp(self.project)
+        return LazyI18nApp(self.project, initial_key=self.initial_key)

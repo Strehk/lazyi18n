@@ -51,6 +51,29 @@ cd lazyi18n
 pip install -e .
 ```
 
+## Usage
+
+### CLI
+
+Run `lazyi18n` in your terminal. By default, it looks for translation files in the current directory.
+
+```bash
+# Open in current directory
+lazyi18n
+
+# Open in a specific directory
+lazyi18n ./locales
+
+# Open directly in edit mode for a specific key
+# If the key exists, it opens the editor.
+# If the key is missing, it opens the creation dialog with the key prefilled.
+lazyi18n -e auth.login.title
+```
+
+### Keybindings
+
+Press `?` within the application to see the full list of keybindings.
+
 ## Neovim Integration
 
 You can integrate `lazyi18n` directly into Neovim using `toggleterm.nvim` or `snacks.nvim`.

@@ -253,9 +253,10 @@ class NewKeyScreen(Screen):
     }
     """
 
-    def __init__(self, project: TranslationProject):
+    def __init__(self, project: TranslationProject, initial_key: str | None = None):
         super().__init__()
         self.project = project
+        self.initial_key = initial_key
         self.key_input = None
         self.inputs = {}
         self.error_label = None
@@ -266,7 +267,11 @@ class NewKeyScreen(Screen):
             yield Label("Create New Translation Key", id="new-key-title")
 
             yield Label("Key (e.g., auth.login.title):", classes="key-label")
-            self.key_input = Input(placeholder="Enter key path...", id="key-input")
+            self.key_input = Input(
+                value=self.initial_key or "",
+                placeholder="Enter key path...",
+                id="key-input",
+            )
             yield self.key_input
 
             for locale in self.project.get_locales():
@@ -285,7 +290,12 @@ class NewKeyScreen(Screen):
 
     def on_mount(self) -> None:
         """Focus key input on mount."""
-        self.set_focus(self.key_input)
+        if self.initial_key and self.inputs:
+            # Focus the first translation input if key is prefilled
+            first_input = next(iter(self.inputs.values()))
+            self.set_focus(first_input)
+        else:
+            self.set_focus(self.key_input)
 
     def action_create(self) -> None:
         """Create the new key."""
