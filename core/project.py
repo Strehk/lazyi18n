@@ -7,7 +7,7 @@ from typing import Dict, Set, Optional
 from dataclasses import dataclass
 
 from .loader import TranslationFileLoader, LocaleFile
-from .flatten import flatten_json, unflatten_json, get_nested_value, set_nested_value
+from .flatten import flatten_json, unflatten_json
 from .analyzer import TranslationGapAnalyzer
 from .writer import TranslationWriter
 
@@ -15,6 +15,7 @@ from .writer import TranslationWriter
 @dataclass
 class ProjectChange:
     """Represents a single change made to a translation."""
+
     locale: str
     key: str
     old_value: Optional[str]
@@ -32,7 +33,7 @@ class TranslationProject:
         self.directory = Path(directory)
         self.loader = TranslationFileLoader(self.directory)
         self.writer = TranslationWriter(indent=2)
-        
+
         # State
         self.locale_files: Dict[str, LocaleFile] = {}
         self.flattened: Dict[str, Dict] = {}
@@ -78,7 +79,7 @@ class TranslationProject:
 
         old_value = self.flattened[locale].get(key)
         self.flattened[locale][key] = value
-        
+
         change_id = f"{locale}:{key}"
         self.changes[change_id] = ProjectChange(
             locale=locale,
@@ -125,10 +126,10 @@ class TranslationProject:
     def save(self, locale: Optional[str] = None) -> bool:
         """
         Save changes to disk.
-        
+
         Args:
             locale: If provided, only save this locale. Otherwise save all.
-        
+
         Returns:
             True if successful
         """
@@ -144,7 +145,7 @@ class TranslationProject:
 
             # Unflatten back to nested structure
             nested_data = unflatten_json(self.flattened[loc])
-            
+
             # Write to file
             locale_file = self.locale_files[loc]
             if self.writer.write_atomic(nested_data, locale_file.path):

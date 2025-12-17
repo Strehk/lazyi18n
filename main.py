@@ -17,7 +17,7 @@ from ui.app import LazyI18nTUI
 def main():
     """Main entry point."""
     import argparse
-    
+
     parser = argparse.ArgumentParser(
         description="lazyi18n - TUI for managing i18next translations"
     )
@@ -31,15 +31,15 @@ def main():
         version=f"lazyi18n {__version__}",
         help="Show version information and exit",
     )
-    
+
     args = parser.parse_args()
-    
+
     tui = LazyI18nTUI(args.directory)
-    
+
     if not tui.load():
         print("Error: Failed to load translations from", args.directory)
         sys.exit(1)
-    
+
     app = tui.create_app()
     app.run()
 

@@ -19,9 +19,9 @@ from ui.screens import (
 
 class LazyI18nApp(App):
     """Textual application for lazyi18n."""
-    
+
     TITLE = "LazyI18n"
-    
+
     CSS = """
     Screen {
         layout: horizontal;
@@ -69,7 +69,7 @@ class LazyI18nApp(App):
         background: transparent;
     }
     """
-    
+
     BINDINGS = [
         ("s", "save", "Save"),
         ("q", "quit", "Quit"),
@@ -83,7 +83,7 @@ class LazyI18nApp(App):
         ("m", "toggle_missing", "Toggle Missing Filter"),
         ("escape", "cancel_search", "Cancel Search"),
     ]
-    
+
     def __init__(self, project: TranslationProject):
         super().__init__()
         self.project = project
@@ -94,21 +94,21 @@ class LazyI18nApp(App):
         self.is_searching = False
         self.show_staged = False
         self.show_missing = False
-    
+
     def compose(self) -> ComposeResult:
         """Compose the UI."""
         yield Header()
-        
+
         with Horizontal():
             self.tree_pane = TreePane(self.project)
             self.tree_pane.id = "left-pane"
             yield self.tree_pane
-            
+
             with VerticalScroll(id="right-container"):
                 self.values_pane = ValuesPane(self.project)
                 self.values_pane.id = "right-pane"
                 yield self.values_pane
-                
+
                 self.status_pane = StatusPane(self.project)
                 self.status_pane.id = "status-pane"
                 yield self.status_pane
@@ -118,7 +118,7 @@ class LazyI18nApp(App):
         if self.status_pane:
             self.status_pane.action = "Ready"
             self.status_pane.update_status()
-    
+
     @on(Tree.NodeSelected)
     def on_tree_select(self, event: Tree.NodeSelected) -> None:
         """Handle tree selection."""
@@ -134,13 +134,13 @@ class LazyI18nApp(App):
             self.values_pane.selected_key = event.node.data
             # Force refresh to ensure right pane updates during navigation
             self.values_pane.refresh()
-    
+
     @on(Input.Changed, "#search-input")
     def on_search_changed(self, event: Input.Changed) -> None:
         """Handle search input changes."""
         self.search_buffer = event.value
         self.tree_pane.rebuild(self.search_buffer, self.show_staged, self.show_missing)
-    
+
     @on(Input.Submitted, "#search-input")
     def on_search_submitted(self, event: Input.Submitted) -> None:
         """Handle search submission."""
@@ -150,7 +150,7 @@ class LazyI18nApp(App):
         self.status_pane.action = f"Filter: {self.search_buffer or 'none'}"
         # Focus tree to allow navigation
         self.set_focus(self.tree_pane)
-    
+
     def action_toggle_staged(self) -> None:
         """Toggle staged keys filter."""
         if self.is_searching:
@@ -174,7 +174,7 @@ class LazyI18nApp(App):
         self.status_pane.search_input.display = True
         self.status_pane.search_input.value = self.search_buffer
         self.set_focus(self.status_pane.search_input)
-        
+
     def action_cancel_search(self) -> None:
         """Cancel search mode."""
         if self.is_searching:
@@ -184,41 +184,43 @@ class LazyI18nApp(App):
             self.status_pane.status_display.display = True
             self.tree_pane.clear_filter()
             self.set_focus(self.tree_pane)
-    
+
     def action_edit(self) -> None:
         """Edit the selected key or toggle branch expansion."""
         if self.is_searching:
             return
-            
+
         # If we are on a branch node (no data), toggle expansion
         # We need to access the tree widget directly
-        if self.tree_pane and hasattr(self.tree_pane, '_tree'):
+        if self.tree_pane and hasattr(self.tree_pane, "_tree"):
             node = self.tree_pane._tree.cursor_node
-            if node and node.allow_expand and not node.is_leaf:
+            if node and node.allow_expand:
                 node.toggle()
                 return
 
         if self.values_pane.selected_key:
             self.push_screen(EditScreen(self.project, self.values_pane.selected_key))
-    
+
     def action_new_key(self) -> None:
         """Create a new translation key."""
         if self.is_searching:
             return
         self.push_screen(NewKeyScreen(self.project))
-    
+
     def action_delete_key(self) -> None:
         """Delete the selected key with confirmation."""
         if self.is_searching:
             return
         if self.values_pane.selected_key:
-            self.push_screen(DeleteConfirmScreen(self.project, self.values_pane.selected_key))
+            self.push_screen(
+                DeleteConfirmScreen(self.project, self.values_pane.selected_key)
+            )
 
     def action_quit(self) -> None:
         """Quit the application."""
         if self.is_searching:
             return
-            
+
         if self.project.has_unsaved_changes():
             self.push_screen(QuitConfirmScreen())
         else:
@@ -232,18 +234,22 @@ class LazyI18nApp(App):
             self.status_pane.action = "[green][/] Saved to disk"
             self.status_pane.update_status()
             # Rebuild tree to clear pencil indicators since everything is now saved
-            self.tree_pane.rebuild(self.search_buffer, self.show_staged, self.show_missing)
+            self.tree_pane.rebuild(
+                self.search_buffer, self.show_staged, self.show_missing
+            )
             # Refresh values pane
             self.values_pane.refresh()
         else:
             self.status_pane.action = "[red][/] Save failed"
-    
+
     def perform_reload(self) -> None:
         """Execute the reload operation."""
         if self.project.reload():
             self.status_pane.action = "[green][/] Reloaded"
             self.status_pane.update_status()
-            self.tree_pane.rebuild(self.search_buffer, self.show_staged, self.show_missing)
+            self.tree_pane.rebuild(
+                self.search_buffer, self.show_staged, self.show_missing
+            )
             self.values_pane.selected_key = ""
         else:
             self.status_pane.action = "[red][/] Reload failed"
@@ -252,12 +258,12 @@ class LazyI18nApp(App):
         """Reload from disk."""
         if self.is_searching:
             return
-            
+
         if self.project.has_unsaved_changes():
             self.push_screen(ReloadConfirmScreen())
         else:
             self.perform_reload()
-    
+
     def action_help(self) -> None:
         """Show help modal."""
         if self.is_searching:
@@ -267,15 +273,15 @@ class LazyI18nApp(App):
 
 class LazyI18nTUI:
     """Main TUI wrapper."""
-    
+
     def __init__(self, directory: Path | str = "."):
         self.directory = Path(directory)
         self.project = TranslationProject(self.directory)
-    
+
     def load(self) -> bool:
         """Load translations from disk."""
         return self.project.load()
-    
+
     def create_app(self) -> LazyI18nApp:
         """Create and return the Textual app."""
         return LazyI18nApp(self.project)

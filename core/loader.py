@@ -12,6 +12,7 @@ from dataclasses import dataclass
 @dataclass
 class LocaleFile:
     """Represents a single locale's translation file."""
+
     locale: str
     path: Path
     data: Dict
@@ -77,9 +78,7 @@ class TranslationFileLoader:
                     continue
 
                 locale_files[locale] = LocaleFile(
-                    locale=locale,
-                    path=file_path,
-                    data=data
+                    locale=locale, path=file_path, data=data
                 )
             except (json.JSONDecodeError, IOError) as e:
                 print(f"Warning: Failed to load {locale}.json: {e}")
@@ -91,6 +90,6 @@ class TranslationFileLoader:
         locales = self.discover_locales()
         if locale not in locales:
             return None
-        
+
         locale_file = self.load().get(locale)
         return locale_file.data if locale_file else None

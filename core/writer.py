@@ -13,7 +13,7 @@ class TranslationWriter:
     def __init__(self, indent: int = 2):
         """
         Initialize writer with formatting preferences.
-        
+
         Args:
             indent: Number of spaces for JSON indentation
         """
@@ -27,17 +27,17 @@ class TranslationWriter:
     ) -> bool:
         """
         Write translation data to a JSON file.
-        
+
         Args:
             data: Dictionary to write
             path: Path to write to
             create_backup: Whether to create a backup before writing
-        
+
         Returns:
             True if successful, False otherwise
         """
         path = Path(path)
-        
+
         try:
             # Create backup if requested and file exists
             if create_backup and path.exists():
@@ -75,11 +75,11 @@ class TranslationWriter:
         """
         Write with atomic operation (write to temp file, then move).
         Safer for preventing data loss if write is interrupted.
-        
+
         Args:
             data: Dictionary to write
             path: Path to write to
-        
+
         Returns:
             True if successful, False otherwise
         """
@@ -87,12 +87,12 @@ class TranslationWriter:
         import shutil
 
         path = Path(path)
-        
+
         try:
             # Create temporary file in same directory (same filesystem)
             temp_dir = path.parent
             temp_dir.mkdir(parents=True, exist_ok=True)
-            
+
             with tempfile.NamedTemporaryFile(
                 mode="w",
                 dir=temp_dir,
