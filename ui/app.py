@@ -13,6 +13,7 @@ from core.llm import LLMTranslator
 from ui.panes import StatusPane, TreePane, ValuesPane
 from ui.screens import (
     DeleteConfirmScreen,
+    DiscardConfirmScreen,
     EditScreen,
     HelpScreen,
     NewKeyScreen,
@@ -287,12 +288,24 @@ class LazyI18nApp(App):
         self.push_screen(NewKeyScreen(self.project))
 
     def action_delete_key(self) -> None:
-        """Delete the selected key with confirmation."""
+        """Delete the selected key or discard changes with confirmation."""
         if self.is_searching:
             return
-        if self.values_pane.selected_key:
+        
+        key = self.values_pane.selected_key
+        if not key:
+            return
+
+        # Check if key has unsaved changes
+        changed_keys = self.project.get_changed_keys()
+        
+        if key in changed_keys:
             self.push_screen(
-                DeleteConfirmScreen(self.project, self.values_pane.selected_key)
+                DiscardConfirmScreen(self.project, key)
+            )
+        else:
+            self.push_screen(
+                DeleteConfirmScreen(self.project, key)
             )
 
     def action_translate_key(self) -> None:

@@ -97,6 +97,7 @@ class TranslationProject:
         old_value = self.flattened[locale].get(key)
         if key in self.flattened[locale]:
             del self.flattened[locale][key]
+        
         change_id = f"{locale}:{key}"
         self.changes[change_id] = ProjectChange(
             locale=locale,
@@ -105,6 +106,42 @@ class TranslationProject:
             new_value=None,
         )
         self.unsaved_changes.add(locale)
+        return True
+
+    def discard_key_changes(self, key: str) -> bool:
+        """
+        Discard all unsaved changes for a specific key.
+        Reverts values to their original state.
+        """
+        changes_to_discard = [
+            (cid, change) for cid, change in self.changes.items() 
+            if change.key == key
+        ]
+        
+        if not changes_to_discard:
+            return False
+            
+        for change_id, change in changes_to_discard:
+            locale = change.locale
+            
+            # Revert value
+            if change.old_value is None:
+                # It was a new key, so remove it
+                if locale in self.flattened and key in self.flattened[locale]:
+                    del self.flattened[locale][key]
+            else:
+                # Restore old value
+                if locale in self.flattened:
+                    self.flattened[locale][key] = change.old_value
+            
+            # Remove change record
+            del self.changes[change_id]
+            
+            # Check if locale still has changes
+            locale_has_changes = any(c.locale == locale for c in self.changes.values())
+            if not locale_has_changes:
+                self.unsaved_changes.discard(locale)
+                
         return True
 
     def get_gaps(self) -> Dict:

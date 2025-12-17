@@ -616,6 +616,93 @@ class DeleteConfirmScreen(Screen):
         self.app.pop_screen()
 
 
+class DiscardConfirmScreen(Screen):
+    """Modal screen for confirming discard of changes."""
+
+    BINDINGS = [
+        ("escape", "cancel", "Cancel"),
+        ("enter", "confirm", "Confirm Discard"),
+    ]
+
+    CSS = """
+    DiscardConfirmScreen {
+        align: center middle;
+    }
+    
+    #discard-dialog {
+        width: 60;
+        height: auto;
+        border: heavy $warning;
+        background: $surface;
+        padding: 1 2;
+    }
+    
+    #discard-title {
+        text-align: center;
+        color: $warning;
+        text-style: bold;
+        margin-bottom: 1;
+    }
+    
+    #discard-key {
+        color: $text;
+        margin: 1 0;
+        text-align: center;
+    }
+    
+    #discard-warning {
+        color: $text;
+        margin: 1 0;
+        text-align: center;
+    }
+    
+    #discard-help {
+        dock: bottom;
+        text-align: center;
+        color: $text-muted;
+        margin-top: 1;
+    }
+    """
+
+    def __init__(self, project: TranslationProject, key: str):
+        super().__init__()
+        self.project = project
+        self.key = key
+
+    def compose(self) -> ComposeResult:
+        """Compose the discard confirmation dialog."""
+        with VerticalScroll(id="discard-dialog"):
+            yield Label("Discard Changes?", id="discard-title")
+            yield Label(f"[bold]{self.key}[/]", id="discard-key")
+            yield Label(
+                "This will revert all unsaved changes for this key.",
+                id="discard-warning",
+            )
+            yield Label("[bold green]Enter[/] Confirm | [Esc] Cancel", id="discard-help")
+
+    def action_confirm(self) -> None:
+        """Confirm and discard changes."""
+        self.project.discard_key_changes(self.key)
+
+        # Notify main app to rebuild tree
+        if hasattr(self.app, "tree_pane"):
+            self.app.tree_pane.rebuild(
+                self.app.search_buffer, self.app.show_staged, self.app.show_missing
+            )
+        if hasattr(self.app, "values_pane"):
+            self.app.values_pane.refresh()
+            
+        if hasattr(self.app, "status_pane"):
+            self.app.status_pane.action = f"[$success][/] Discarded changes for: {self.key}"
+            self.app.status_pane.update_status()
+
+        self.app.pop_screen()
+
+    def action_cancel(self) -> None:
+        """Cancel discard."""
+        self.app.pop_screen()
+
+
 class QuitConfirmScreen(Screen):
     """Modal screen for confirming quit with unsaved changes."""
 
