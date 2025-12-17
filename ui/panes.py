@@ -6,6 +6,7 @@ from textual.binding import Binding
 
 from core.project import TranslationProject
 
+
 class TranslationTree(Tree):
     """Custom Tree widget to handle keybindings."""
 
@@ -187,7 +188,7 @@ class ValuesPane(Static):
         header_color = "$primary"
         gaps = self.project.get_gaps()
         changed_keys = self.project.get_changed_keys()
-        
+
         if self.selected_key in gaps:
             header_color = "$error"
         elif self.selected_key in changed_keys:
@@ -271,7 +272,9 @@ class StatusDisplay(Static):
                 present = total_keys - missing
 
                 # Color based on percentage
-                color = "$success" if pct == 100 else "$warning" if pct >= 80 else "$error"
+                color = (
+                    "$success" if pct == 100 else "$warning" if pct >= 80 else "$error"
+                )
 
                 # Progress bar (20 chars wide)
                 bar_width = 20

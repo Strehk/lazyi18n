@@ -443,22 +443,20 @@ class LLMConfirmScreen(Screen):
     def compose(self) -> ComposeResult:
         with VerticalScroll(id="llm-dialog"):
             yield Label("Confirm LLM Translation", id="llm-title")
-            
+
             yield Label("Key:", classes="info-label")
             yield Label(self.key, classes="value-label")
-            
+
             yield Label(f"Source ({self.source_locale}):", classes="info-label")
             yield Label(self.source_text, classes="value-label")
-            
+
             yield Label("Target Locales:", classes="info-label")
             yield Label(", ".join(self.target_locales), classes="value-label")
-            
+
             yield Label("Model:", classes="info-label")
             yield Label(self.model, classes="value-label")
-            
-            yield Label(
-                "[Esc] Cancel | [Enter] Translate", id="llm-help"
-            )
+
+            yield Label("[Esc] Cancel | [Enter] Translate", id="llm-help")
 
     def action_confirm(self) -> None:
         self.app.pop_screen()
@@ -525,7 +523,6 @@ class LLMMissingKeyScreen(Screen):
 
     def action_close(self) -> None:
         self.app.pop_screen()
-
 
 
 class DeleteConfirmScreen(Screen):
@@ -678,7 +675,9 @@ class DiscardConfirmScreen(Screen):
                 "This will revert all unsaved changes for this key.",
                 id="discard-warning",
             )
-            yield Label("[bold green]Enter[/] Confirm | [Esc] Cancel", id="discard-help")
+            yield Label(
+                "[bold green]Enter[/] Confirm | [Esc] Cancel", id="discard-help"
+            )
 
     def action_confirm(self) -> None:
         """Confirm and discard changes."""
@@ -691,9 +690,11 @@ class DiscardConfirmScreen(Screen):
             )
         if hasattr(self.app, "values_pane"):
             self.app.values_pane.refresh()
-            
+
         if hasattr(self.app, "status_pane"):
-            self.app.status_pane.action = f"[$success][/] Discarded changes for: {self.key}"
+            self.app.status_pane.action = (
+                f"[$success][/] Discarded changes for: {self.key}"
+            )
             self.app.status_pane.update_status()
 
         self.app.pop_screen()
@@ -755,7 +756,8 @@ class QuitConfirmScreen(Screen):
                 id="quit-warning",
             )
             yield Label(
-                f"[bold $error]Enter[/] Quit without saving | [Esc] Cancel", id="quit-help"
+                f"[bold $error]Enter[/] Quit without saving | [Esc] Cancel",
+                id="quit-help",
             )
 
     def action_confirm(self) -> None:
@@ -819,7 +821,8 @@ class ReloadConfirmScreen(Screen):
                 id="reload-warning",
             )
             yield Label(
-                f"[bold $error]Enter[/] Reload and discard | [Esc] Cancel", id="reload-help"
+                f"[bold $error]Enter[/] Reload and discard | [Esc] Cancel",
+                id="reload-help",
             )
 
     def action_confirm(self) -> None:
@@ -914,4 +917,3 @@ class LLMProgressScreen(Screen):
         """Close the screen if done."""
         if self.is_done:
             self.app.pop_screen()
-

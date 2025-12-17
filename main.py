@@ -90,7 +90,7 @@ def handle_config_command(args):
 
         # Ensure directory exists
         path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         # Create file if it doesn't exist
         if not path.exists():
             path.touch()
@@ -99,7 +99,9 @@ def handle_config_command(args):
         try:
             subprocess.call([editor, str(path)])
         except FileNotFoundError:
-            print(f"Error: Editor '{editor}' not found. Please set EDITOR environment variable.")
+            print(
+                f"Error: Editor '{editor}' not found. Please set EDITOR environment variable."
+            )
             sys.exit(1)
 
 
@@ -182,16 +184,16 @@ def main():
     )
 
     # Config command
-    config_parser = subparsers.add_parser(
-        "config", help="View or modify configuration"
-    )
+    config_parser = subparsers.add_parser("config", help="View or modify configuration")
     config_parser.add_argument(
         "config_action",
         choices=["view", "set", "delete", "edit"],
         help="Action to perform: view config, set a value, delete a key, or edit the file",
     )
     config_parser.add_argument(
-        "-k", "--key", help="Configuration key (supports dot notation, e.g., translator.api_key)"
+        "-k",
+        "--key",
+        help="Configuration key (supports dot notation, e.g., translator.api_key)",
     )
     config_parser.add_argument("-v", "--value", help="Value to set (for 'set' action)")
     config_parser.add_argument(
@@ -278,4 +280,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

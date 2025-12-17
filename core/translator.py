@@ -27,12 +27,12 @@ class Translator:
     ) -> Optional[str]:
         """
         Translate text from source locale to target locale.
-        
+
         Args:
             text: Text to translate
             source_locale: Source language code (e.g., 'en')
             target_locale: Target language code (e.g., 'de')
-            
+
         Returns:
             Translated text or None if translation fails
         """
@@ -43,7 +43,7 @@ class Translator:
             # Convert locale codes to language codes (e.g., 'en-US' -> 'en')
             src_lang = source_locale.split("-")[0].lower()
             dest_lang = target_locale.split("-")[0].lower()
-            
+
             translator = GoogleTranslator(source=src_lang, target=dest_lang)
             return translator.translate(text)
         except Exception as e:
@@ -53,11 +53,11 @@ class Translator:
         """
         Detect the best source locale for a key.
         Returns the first locale that has a value for the key.
-        
+
         Args:
             project: TranslationProject instance
             key: Translation key
-            
+
         Returns:
             Locale code or None if key not found in any locale
         """
@@ -75,12 +75,12 @@ class Translator:
     ) -> Dict[str, str]:
         """
         Translate a key for all missing locales.
-        
+
         Args:
             project: TranslationProject instance
             key: Translation key to translate
             source_locale: Source locale to translate from. If None, auto-detect.
-            
+
         Returns:
             Dictionary mapping locale -> translated text for missing locales
         """
@@ -116,11 +116,11 @@ class Translator:
     def translate_all_missing(self, project, source_locale: Optional[str] = None):
         """
         Translate all missing keys across all locales.
-        
+
         Args:
             project: TranslationProject instance
             source_locale: Preferred source locale. If None, auto-detect per key.
-            
+
         Returns:
             Dictionary mapping (locale, key) -> translated text
         """

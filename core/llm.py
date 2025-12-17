@@ -55,6 +55,7 @@ class LLMTranslator:
         Returns:
             Dictionary mapping locale -> translated text
         """
+
         def log(msg: str):
             if log_callback:
                 log_callback(msg)
@@ -97,36 +98,40 @@ class LLMTranslator:
                     {"role": "user", "content": json.dumps(user_content)},
                 ],
             }
-            
+
             # Only add response_format for non-o1 models and non-claude models (if using via OpenAI compat)
             # Claude models via some proxies might not support json_object type or require different handling
             # But the error specifically said "Input should be 'json_schema'" which suggests a newer OpenAI client validation
             # or a specific model requirement.
             # However, for broad compatibility, we'll try to be safer.
-            
-            # If the error is "response_format.type: Input should be 'json_schema'", it means the model/client 
+
+            # If the error is "response_format.type: Input should be 'json_schema'", it means the model/client
             # expects structured outputs (json_schema) instead of json_object, OR the library version is enforcing it.
             # But standard gpt-3.5/4 supports json_object.
-            # The traceback shows 'claude-sonnet-4-5' as the model. 
-            # If the user is using an OpenAI-compatible endpoint (like Anthropic via a proxy or similar), 
+            # The traceback shows 'claude-sonnet-4-5' as the model.
+            # If the user is using an OpenAI-compatible endpoint (like Anthropic via a proxy or similar),
             # it might not support response_format={"type": "json_object"}.
-            
-            # Let's try to detect if we should omit response_format based on the error, 
+
+            # Let's try to detect if we should omit response_format based on the error,
             # but we can't easily do that in a single try/catch block without retry logic.
             # For now, let's make response_format optional if it fails, or just rely on the prompt.
-            
+
             # Actually, the safest bet for "OpenAI Compatible" generic usage is to NOT enforce response_format
             # unless we know the model supports it, OR to catch the specific error and retry without it.
-            
+
             try:
                 if not is_o1:
                     kwargs["response_format"] = {"type": "json_object"}
-                
-                log("Attempting request with response_format={'type': 'json_object'}...")
+
+                log(
+                    "Attempting request with response_format={'type': 'json_object'}..."
+                )
                 response = self.client.chat.completions.create(**kwargs)
             except Exception as e:
                 # If it fails with a BadRequest related to response_format, try again without it
-                if "response_format" in str(e) and "json_object" in kwargs.get("response_format", {}).get("type", ""):
+                if "response_format" in str(e) and "json_object" in kwargs.get(
+                    "response_format", {}
+                ).get("type", ""):
                     log(f"[yellow]Request failed with response_format error: {e}[/]")
                     log("Retrying without response_format...")
                     del kwargs["response_format"]
@@ -135,8 +140,10 @@ class LLMTranslator:
                     raise e
 
             log("[green]Response received![/]")
-            if hasattr(response, 'usage') and response.usage:
-                log(f"Usage: {response.usage.total_tokens} tokens (Prompt: {response.usage.prompt_tokens}, Completion: {response.usage.completion_tokens})")
+            if hasattr(response, "usage") and response.usage:
+                log(
+                    f"Usage: {response.usage.total_tokens} tokens (Prompt: {response.usage.prompt_tokens}, Completion: {response.usage.completion_tokens})"
+                )
 
             content = response.choices[0].message.content
             log(f"Raw content: {content}")
@@ -149,11 +156,13 @@ class LLMTranslator:
             cleaned_content = content
             if "```" in cleaned_content:
                 lines = cleaned_content.splitlines()
-                cleaned_lines = [line for line in lines if not line.strip().startswith("```")]
+                cleaned_lines = [
+                    line for line in lines if not line.strip().startswith("```")
+                ]
                 cleaned_content = "\n".join(cleaned_lines)
 
             translations = json.loads(cleaned_content)
-            
+
             # Validate response contains expected locales
             result = {}
             for locale in target_locales:
@@ -161,7 +170,7 @@ class LLMTranslator:
                     result[locale] = str(translations[locale])
                 else:
                     log(f"[red]Missing translation for locale: {locale}[/]")
-            
+
             return result
 
         except Exception as e:

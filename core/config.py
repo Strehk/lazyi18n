@@ -15,7 +15,7 @@ class Config:
     def __init__(self, project_dir: Optional[Path] = None):
         """
         Initialize config manager.
-        
+
         Args:
             project_dir: Project directory for local config. If None, only global config is used.
         """
@@ -61,46 +61,46 @@ class Config:
     def get(self, key: str, default: Any = None) -> Any:
         """
         Get a configuration value.
-        
+
         Args:
             key: Configuration key (supports dot notation, e.g., "translator.api_key")
             default: Default value if key not found
-            
+
         Returns:
             Configuration value or default
         """
         parts = key.split(".")
         value = self._config
-        
+
         for part in parts:
             if isinstance(value, dict) and part in value:
                 value = value[part]
             else:
                 return default
-        
+
         return value
 
     def set(self, key: str, value: Any, local: bool = False) -> bool:
         """
         Set a configuration value.
-        
+
         Args:
             key: Configuration key (supports dot notation)
             value: Value to set
             local: If True, save to local config; otherwise global
-            
+
         Returns:
             True if successful
         """
         # Update in-memory config
         parts = key.split(".")
         config_dict = self._config
-        
+
         for part in parts[:-1]:
             if part not in config_dict:
                 config_dict[part] = {}
             config_dict = config_dict[part]
-        
+
         config_dict[parts[-1]] = value
 
         # Save to file
@@ -109,10 +109,10 @@ class Config:
     def _save(self, local: bool = False) -> bool:
         """
         Save configuration to file.
-        
+
         Args:
             local: If True, save to local config; otherwise global
-            
+
         Returns:
             True if successful
         """
@@ -137,7 +137,7 @@ class Config:
     def list_all(self) -> dict:
         """
         Get all configuration values.
-        
+
         Returns:
             Dictionary of all config values
         """
@@ -146,26 +146,26 @@ class Config:
     def delete(self, key: str, local: bool = False) -> bool:
         """
         Delete a configuration value.
-        
+
         Args:
             key: Configuration key (supports dot notation)
             local: If True, delete from local config; otherwise global
-            
+
         Returns:
             True if successful
         """
         parts = key.split(".")
         config_dict = self._config
-        
+
         # Navigate to parent
         for part in parts[:-1]:
             if part not in config_dict:
                 return False
             config_dict = config_dict[part]
-        
+
         # Delete key
         if parts[-1] in config_dict:
             del config_dict[parts[-1]]
             return self._save(local)
-        
+
         return False
