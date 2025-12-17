@@ -81,7 +81,7 @@ Where lazyi18n truly begins to shine is its integration with Neovim, especially 
 There are 1000s of ways to set this up and I highly recommend adapting it to your own workflow and files, but here is my configuration to get you started. I am using `snacks.nvim` in my LazyVim setup, but you could achieve similar results with `toggleterm.nvim` or any other terminal plugin.
 
 <details>
-<summary>### Opening lazyi18n in Neovim</summary>
+<summary><h3>Opening lazyi18n in Neovim</h3></summary>
 
 ```lua
 return {
@@ -115,7 +115,7 @@ return {
 </details>
 
 <details>
-<summary>### Opening lazyi18n in edit mode for the key under the cursor</summary>
+<summary><h3>Opening lazyi18n in edit mode for the key under the cursor</h3></summary>
 
 ```lua
 return {
