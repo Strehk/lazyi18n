@@ -425,19 +425,23 @@ class LazyI18nApp(App):
                 target_locales,
                 log_callback=log_callback
             )
-            self.call_from_thread(self._on_llm_translate_complete, key, translations, None)
+            self.call_from_thread(self._on_llm_translate_complete, key, translations, None, progress_screen)
         except Exception as e:
-            self.call_from_thread(self._on_llm_translate_complete, key, None, str(e))
+            self.call_from_thread(self._on_llm_translate_complete, key, None, str(e), progress_screen)
 
-    def _on_llm_translate_complete(self, key: str, translations: dict | None, error: str | None) -> None:
-        self.pop_screen() # Remove progress screen
-        
+    def _on_llm_translate_complete(self, key: str, translations: dict | None, error: str | None, progress_screen: LLMProgressScreen) -> None:
         if error:
+            progress_screen.write_log(f"[bold red]Error:[/bold red] {error}")
+            progress_screen.set_done()
+            
             self.status_pane.action = f"[$error]✗[/] LLM Translation failed: {error}"
             self.status_pane.update_status()
             return
         
         if not translations:
+             progress_screen.write_log(f"[bold yellow]No translations returned.[/bold yellow]")
+             progress_screen.set_done()
+
              self.status_pane.action = f"[$secondary]ℹ[/] No translations returned for {key}"
              self.status_pane.update_status()
              return
@@ -447,6 +451,9 @@ class LazyI18nApp(App):
             self.project.set_key_value(locale, key, text)
         
         count = len(translations)
+        progress_screen.write_log(f"[bold green]Successfully translated to {count} locales.[/bold green]")
+        progress_screen.set_done()
+        
         self.status_pane.action = f"[$success][/] LLM Translated {key} to {count} locale(s)"
         self.status_pane.update_status()
         

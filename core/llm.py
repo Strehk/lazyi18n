@@ -144,7 +144,15 @@ class LLMTranslator:
             if not content:
                 raise LLMTranslationError("Empty response from LLM")
 
-            translations = json.loads(content)
+            # Clean up markdown code blocks if present
+            # Some LLMs return markdown code blocks even when asked for raw JSON
+            cleaned_content = content
+            if "```" in cleaned_content:
+                lines = cleaned_content.splitlines()
+                cleaned_lines = [line for line in lines if not line.strip().startswith("```")]
+                cleaned_content = "\n".join(cleaned_lines)
+
+            translations = json.loads(cleaned_content)
             
             # Validate response contains expected locales
             result = {}

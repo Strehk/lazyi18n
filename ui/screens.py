@@ -748,6 +748,11 @@ class ReloadConfirmScreen(Screen):
 class LLMProgressScreen(Screen):
     """Screen showing LLM translation progress and logs."""
 
+    BINDINGS = [
+        ("escape", "dismiss", "Close"),
+        ("enter", "dismiss", "Close"),
+    ]
+
     CSS = """
     LLMProgressScreen {
         align: center middle;
@@ -779,19 +784,47 @@ class LLMProgressScreen(Screen):
         height: auto;
         margin: 1 0;
     }
+
+    #continue-label {
+        text-align: center;
+        color: $text-muted;
+        margin-top: 1;
+        display: none;
+    }
+    
+    .done #continue-label {
+        display: block;
+    }
+    
+    .done LoadingIndicator {
+        display: none;
+    }
     """
 
     def __init__(self):
         super().__init__()
         self.log_widget = RichLog(highlight=True, markup=True)
+        self.is_done = False
 
     def compose(self) -> ComposeResult:
         with VerticalScroll(id="progress-dialog"):
             yield Label("Translating...", id="progress-title")
             yield LoadingIndicator()
             yield self.log_widget
+            yield Label("Press Enter or Esc to continue", id="continue-label")
 
     def write_log(self, message: str) -> None:
         """Write a message to the log."""
         self.log_widget.write(message)
+
+    def set_done(self) -> None:
+        """Mark the process as done."""
+        self.is_done = True
+        self.query_one("#progress-dialog").add_class("done")
+        self.query_one("#progress-title").update("Translation Complete")
+
+    def action_dismiss(self) -> None:
+        """Close the screen if done."""
+        if self.is_done:
+            self.app.pop_screen()
 
