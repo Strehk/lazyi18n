@@ -170,21 +170,14 @@ class EditScreen(Screen):
         """Save all changes to memory and close."""
         # Read current values from inputs
         for locale, input_widget in self.inputs.items():
-            # Get the text from the Input widget - use the document if value doesn't work
-            if hasattr(input_widget, 'document') and input_widget.document:
-                new_value = input_widget.document.text.strip()
-            else:
-                new_value = (input_widget.value.strip() if input_widget.value else "")
+            # Get the text from the Input widget
+            new_value = input_widget.value.strip() if input_widget.value else ""
             
             if new_value:
                 self.project.set_key_value(locale, self.key, new_value)
             else:
                 # Empty field deletes the translation for that locale
                 self.project.delete_key_value(locale, self.key)
-        
-        # Mark this key as edited for the tree indicator
-        if hasattr(self.app, 'edited_key'):
-            self.app.edited_key = self.key
         
         # Update the values pane and tree immediately
         if hasattr(self.app, 'values_pane') and self.app.values_pane:
@@ -311,16 +304,16 @@ class NewKeyScreen(Screen):
         
         # Validate key
         if not key:
-            self.error_label.update("❌ Key cannot be empty")
+            self.error_label.update(" Key cannot be empty")
             return
         
         if not all(c.isalnum() or c in "._-" for c in key):
-            self.error_label.update("❌ Key can only contain letters, numbers, dots, hyphens, and underscores")
+            self.error_label.update(" Key can only contain letters, numbers, dots, hyphens, and underscores")
             return
         
         # Check if key already exists
         if key in self.project.get_all_keys():
-            self.error_label.update("❌ Key already exists")
+            self.error_label.update(" Key already exists")
             return
         
         # Collect values
@@ -332,14 +325,14 @@ class NewKeyScreen(Screen):
                 self.project.set_key_value(locale, key, new_value)
         
         if not has_value:
-            self.error_label.update("❌ At least one translation must be provided")
+            self.error_label.update(" At least one translation must be provided")
             return
         
         # Notify main app to rebuild tree
         if hasattr(self.app, 'tree_pane'):
             self.app.tree_pane.rebuild(self.app.search_buffer if self.app.is_searching else "")
         if hasattr(self.app, 'status_pane'):
-            self.app.status_pane.action = f"✓ Created key: {key}"
+            self.app.status_pane.action = f" Created key: {key}"
         
         self.app.pop_screen()
     
@@ -452,7 +445,7 @@ class BulkFillScreen(Screen):
     def action_apply(self) -> None:
         """Apply bulk fill to missing translations."""
         if not self.missing_keys:
-            self.error_label.update("❌ No missing translations to fill")
+            self.error_label.update(" No missing translations to fill")
             return
         
         any_value = False
@@ -465,13 +458,13 @@ class BulkFillScreen(Screen):
                 self.project.set_key_value(locale, key, val)
         
         if not any_value:
-            self.error_label.update("❌ Provide at least one value to apply")
+            self.error_label.update(" Provide at least one value to apply")
             return
         
         if hasattr(self.app, 'tree_pane'):
             self.app.tree_pane.rebuild(self.app.tree_pane.search_term)
         if hasattr(self.app, 'status_pane'):
-            self.app.status_pane.action = "✓ Bulk applied"
+            self.app.status_pane.action = " Bulk applied"
         
         self.app.pop_screen()
     
@@ -559,7 +552,7 @@ class DeleteConfirmScreen(Screen):
         if hasattr(self.app, 'values_pane'):
             self.app.values_pane.selected_key = ""
         if hasattr(self.app, 'status_pane'):
-            self.app.status_pane.action = f"✓ Deleted key: {self.key}"
+            self.app.status_pane.action = f" Deleted key: {self.key}"
             self.app.status_pane.update_status()
         
         self.app.pop_screen()
@@ -595,9 +588,7 @@ class TreePane(Static):
         gaps = self.project.get_gaps()
         keys = self.project.get_all_keys()
         unsaved_locales = self.project.get_unsaved_locales()
-        
-        # Get the recently edited key from the app
-        edited_key = getattr(self.app, 'edited_key', None)
+        changed_keys = self.project.get_changed_keys()
         
         # Filter keys by search term
         if filter_term:
@@ -620,39 +611,39 @@ class TreePane(Static):
         # Add top-level keys directly to root
         for key in sorted(top_level_keys):
             has_gap = key in gaps
-            has_unsaved = key == edited_key and unsaved_locales
+            has_unsaved = key in changed_keys and unsaved_locales
             
             # Mark with status: unsaved, gap, or complete
             if has_unsaved:
-                label = f"✏️  {key}"
+                label = f"  {key}"
             elif has_gap:
-                label = f"⚠️  {key}"
+                label = f"  {key}"
             else:
-                label = f"✓ {key}"
+                label = f" {key}"
             root.add_leaf(label, data=key)
         
         # Build tree with category warnings if any child has gaps
         for category in sorted(categories.keys()):
             category_keys = categories[category]
             category_has_gap = any(k in gaps for k in category_keys)
-            cat_label = f"📁 {category}"
+            cat_label = f" {category}"
             if category_has_gap:
-                cat_label = f"⚠️  {cat_label}"
+                cat_label = f"  {cat_label}"
             cat_node = root.add(cat_label)
             cat_node.expand()
             for key in sorted(categories[category]):
                 label = key.split(".", 1)[1] if "." in key else key
                 has_gap = key in gaps
-                # Show pencil only if this is the key that was just edited and locales are unsaved
-                has_unsaved = key == edited_key and unsaved_locales
+                # Show pencil if this key has unsaved changes
+                has_unsaved = key in changed_keys and unsaved_locales
                 
                 # Mark with status: unsaved, gap, or complete
                 if has_unsaved:
-                    label = f"✏️  {label}"
+                    label = f"  {label}"
                 elif has_gap:
-                    label = f"⚠️  {label}"
+                    label = f"  {label}"
                 else:
-                    label = f"✓ {label}"
+                    label = f" {label}"
                 cat_node.add_leaf(label, data=key)
     
     def rebuild(self, filter_term: str = "") -> None:
@@ -706,9 +697,9 @@ class ValuesPane(Static):
             else:
                 value = self.project.get_key_value(locale, self.selected_key)
             if value:
-                lines.append(f"[green]✓ {locale}[/green]: {value}")
+                lines.append(f"[green] {locale}[/green]: {value}")
             else:
-                lines.append(f"[red]✗ {locale}[/red]: [dim]MISSING[/]")
+                lines.append(f"[red] {locale}[/red]: [dim]MISSING[/]")
         
         lines.append("")
         lines.append("[dim italic]Press e to edit[/]")
@@ -767,9 +758,9 @@ class StatusPane(Static):
         # Unsaved status
         if self.unsaved:
             unsaved_str = ", ".join(self.unsaved)
-            lines.append(f"[yellow]⚠️  Unsaved:[/] {unsaved_str}")
+            lines.append(f"[yellow]  Unsaved:[/] {unsaved_str}")
         else:
-            lines.append("[green]✓ All saved[/]")
+            lines.append("[green] All saved[/]")
         
         # Action feedback
         if self.action != "Ready":
@@ -849,7 +840,6 @@ class LazyI18nApp(App):
         self.status_pane = None
         self.search_buffer = ""
         self.is_searching = False
-        self.edited_key = None  # Track the key that was just edited
     
     def compose(self) -> ComposeResult:
         """Compose the UI."""
@@ -920,10 +910,7 @@ class LazyI18nApp(App):
                 self.status_pane.search_term = self.search_buffer
                 self.tree_pane.rebuild(self.search_buffer)
                 return
-        
-        # Preserve Enter for Textual defaults; use 'e' to edit
-        if event.key == "e" and self.values_pane.selected_key:
-            self.action_edit()
+
     
     def action_search(self) -> None:
         """Enter search mode."""
@@ -953,25 +940,24 @@ class LazyI18nApp(App):
     def action_save(self) -> None:
         """Save changes to disk and refresh UI."""
         if self.project.save():
-            self.status_pane.action = "✓ Saved to disk"
+            self.status_pane.action = " Saved to disk"
             self.status_pane.update_status()
             # Rebuild tree to clear pencil indicators since everything is now saved
             self.tree_pane.rebuild(self.tree_pane.search_term)
-            self.edited_key = None  # Clear the edited key marker
             # Refresh values pane
             self.values_pane.refresh()
         else:
-            self.status_pane.action = "✗ Save failed"
+            self.status_pane.action = " Save failed"
     
     def action_reload(self) -> None:
         """Reload from disk."""
         if self.project.reload():
-            self.status_pane.action = "✓ Reloaded"
+            self.status_pane.action = " Reloaded"
             self.status_pane.update_status()
             self.tree_pane.rebuild(self.tree_pane.search_term)
             self.values_pane.selected_key = ""
         else:
-            self.status_pane.action = "✗ Reload failed"
+            self.status_pane.action = " Reload failed"
     
     def action_help(self) -> None:
         """Show help modal."""

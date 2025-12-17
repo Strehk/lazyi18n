@@ -118,6 +118,10 @@ class TranslationProject:
         """Get list of all loaded locales."""
         return sorted(self.locale_files.keys())
 
+    def get_changed_keys(self) -> Set[str]:
+        """Get set of keys that have unsaved changes."""
+        return {change.key for change in self.changes.values()}
+
     def save(self, locale: Optional[str] = None) -> bool:
         """
         Save changes to disk.
