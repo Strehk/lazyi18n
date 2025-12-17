@@ -1,23 +1,39 @@
 {
+  "common": {
+    "ok": "OK",
+    "cancel": "Cancel"
+  },
   "auth": {
     "login": {
       "title": "Sign In",
       "email": "Email Address",
-      "password": "Passwordasdfasdf asdfasd asdf asdf",
+      "password": "Password",
       "forgot": "Forgot Password?",
-      "submit": "asdas"
+      "submit": "Login"
     },
     "signup": {
       "title": "Create Account",
-      "submit": "sdfsdf"
+      "submit": "Sign Up"
     }
   },
   "dashboard": {
-    "welcome": "Welcome",
-    "settings": "Settings"
+    "welcome": "Welcome, {name}",
+    "settings": "Settings",
+    "notifications": {
+      "title": "Notifications",
+      "empty": "No new notifications"
+    }
+  },
+  "features": {
+    "list": [
+      "Feature 1",
+      "Feature 2",
+      "Feature 3"
+    ]
   },
   "errors": {
     "password_short": "Password must be at least 8 characters",
-    "invalid_email": "Test"
+    "invalid_email": "Invalid email address",
+    "network": "Network error"
   }
 }

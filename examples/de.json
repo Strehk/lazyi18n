@@ -1,10 +1,15 @@
 {
+  "common": {
+    "ok": "OK",
+    "cancel": "Abbrechen"
+  },
   "auth": {
     "login": {
-      "title": "Anmelden (Updated)",
+      "title": "Anmelden",
       "email": "E-Mail-Adresse",
-      "password": "Passwortasdfasdf",
-      "forgot": "Passwort vergessen?asdf asdf"
+      "password": "Passwort",
+      "forgot": "Passwort vergessen?",
+      "submit": "Anmelden"
     },
     "signup": {
       "title": "Konto erstellen",
@@ -12,10 +17,21 @@
     }
   },
   "dashboard": {
-    "welcome": "Willkommen",
-    "settings": "sadfasd"
+    "welcome": "Willkommen, {name}",
+    "settings": "Einstellungen"
+  },
+  "features": {
+    "list": [
+      "Funktion 1",
+      "Funktion 2",
+      "Funktion 3"
+    ]
   },
   "errors": {
-    "password_short": "Passwort muss mindestens 8 Zeichen lang sein"
+    "password_short": "Passwort muss mindestens 8 Zeichen lang sein",
+    "network": "Netzwerkfehler"
+  },
+  "legacy": {
+    "old_key": "This key is no longer in en.json"
   }
 }
