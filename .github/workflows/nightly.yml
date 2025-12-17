@@ -71,7 +71,7 @@ jobs:
           --prerelease
 
     - name: Bump Homebrew formula
-      uses: mishig25/action-homebrew-bump-formula@v3
+      uses: mislav/bump-homebrew-formula-action@v3
       with:
         formula-name: lazyi18n-nightly
         homebrew-tap: strehk/homebrew-lazyi18n
