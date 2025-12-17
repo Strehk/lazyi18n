@@ -11,6 +11,8 @@ class TranslationTree(Tree):
 
     BINDINGS = [
         Binding("space", "app.edit", "Edit / Toggle"),
+        Binding("j", "cursor_down", "Down", show=False),
+        Binding("k", "cursor_up", "Up", show=False),
     ]
 
 
@@ -181,7 +183,17 @@ class ValuesPane(Static):
                 "Press [$secondary]?[/] for Help"
             )
 
-        lines = [f"[bold $primary reverse] {self.selected_key} [/]\n"]
+        # Determine header color based on status
+        header_color = "$primary"
+        gaps = self.project.get_gaps()
+        changed_keys = self.project.get_changed_keys()
+        
+        if self.selected_key in gaps:
+            header_color = "$error"
+        elif self.selected_key in changed_keys:
+            header_color = "$warning"
+
+        lines = [f"[bold {header_color} reverse] {self.selected_key} [/]\n"]
 
         for locale in self.project.get_locales():
             # Prefer preview values when editing this key
@@ -192,7 +204,7 @@ class ValuesPane(Static):
             if value:
                 lines.append(f"[$success] {locale}[/]: {value}")
             else:
-                lines.append(f"[$error] {locale}[/]: [dim]MISSING[/]")
+                lines.append(f"[$error reverse]  {locale} [/]: [dim]MISSING[/]")
 
         return "\n".join(lines)
 

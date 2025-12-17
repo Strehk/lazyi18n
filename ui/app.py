@@ -77,6 +77,17 @@ class LazyI18nApp(App):
     Tree {
         background: transparent;
     }
+    
+    /* Tree cursor overrides based on status classes on the Tree widget */
+    Tree.status-error > .tree--cursor {
+        background: $error;
+        color: $text;
+    }
+    
+    Tree.status-warning > .tree--cursor {
+        background: $warning;
+        color: $text;
+    }
     """
 
     BINDINGS = [
@@ -210,10 +221,25 @@ class LazyI18nApp(App):
     @on(Tree.NodeHighlighted)
     def on_tree_highlight(self, event: Tree.NodeHighlighted) -> None:
         """Update values pane when the highlighted node changes via navigation."""
-        if event.node.data:
-            self.values_pane.selected_key = event.node.data
+        tree = event.control
+        key = event.node.data
+        
+        # Reset classes
+        tree.remove_class("status-error", "status-warning")
+
+        if key:
+            self.values_pane.selected_key = key
             # Force refresh to ensure right pane updates during navigation
             self.values_pane.refresh()
+            
+            # Update tree cursor style based on key status
+            gaps = self.project.get_gaps()
+            changed_keys = self.project.get_changed_keys()
+            
+            if key in gaps:
+                tree.add_class("status-error")
+            elif key in changed_keys:
+                tree.add_class("status-warning")
 
     @on(Input.Changed, "#search-input")
     def on_search_changed(self, event: Input.Changed) -> None:
