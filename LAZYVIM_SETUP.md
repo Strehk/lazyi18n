@@ -15,10 +15,7 @@ Getting lazyi18n running in your LazyVim setup for a seamless TUI workflow.
 
 ```bash
 # Clone to a convenient location
-git clone https://github.com/yourusername/lazyi18n.git ~/.local/share/lazyi18n
-
-# Or develop locally
-cd ~/Developer/lazyi18n
+git clone https://github.com/strehk/lazyi18n.git ~/.local/share/lazyi18n
 ```
 
 ### 2. Install Dependencies
@@ -69,7 +66,10 @@ return {
     config = function()
       -- Create custom command
       vim.api.nvim_create_user_command("Lazyi18n", function(opts)
-        local dir = opts.args or vim.fn.getcwd()
+        local dir = opts.args
+        if dir == "" then
+          dir = vim.fn.getcwd()
+        end
         
         -- Use toggleterm or snacks to open floating terminal
         require("lazyi18n").open(dir)

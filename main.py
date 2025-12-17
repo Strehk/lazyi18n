@@ -9,6 +9,8 @@ Enhanced version v3 with:
 - New key creation wizard
 """
 
+__version__ = "3.0.0"
+
 from pathlib import Path
 import sys
 
@@ -1098,9 +1100,13 @@ def main():
     )
     parser.add_argument(
         "directory",
-        nargs="?",
-        default=".",
-        help="Path to directory with translation files (default: current directory)",
+        help="Path to directory with translation files",
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"lazyi18n {__version__}",
+        help="Show version information and exit",
     )
     
     args = parser.parse_args()

@@ -1,6 +1,6 @@
 #!/bin/bash
 # Launcher script for lazyi18n
-# Usage: ./lazyi18n.sh [directory]
+# Usage: ./lazyi18n.sh <directory>
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VENV_PYTHON="$SCRIPT_DIR/.venv/bin/python"
