@@ -71,14 +71,9 @@ jobs:
           --prerelease
 
     - name: Bump Homebrew formula
-      uses: mislav/bump-homebrew-formula-action@v3
+      uses: dawidd6/action-homebrew-bump-formula@v3
       with:
-        formula-name: lazyi18n-nightly
-        homebrew-tap: strehk/homebrew-lazyi18n
-        download-url: https://github.com/${{ github.repository }}/releases/download/nightly-${{ env.VERSION }}/lazyi18n-${{ env.VERSION }}.tar.gz
-        base-branch: main
-        tag-name: ${{ env.VERSION }}
-        commit-message: "{{formulaName}} {{version}}"
-
-      env:
-        COMMITTER_TOKEN: ${{ secrets.COMMITTER_TOKEN }}
+        token: ${{ secrets.COMMITTER_TOKEN }}
+        tap: strehk/homebrew-lazyi18n
+        formula: lazyi18n-nightly
+        tag: ${{ env.VERSION }}
