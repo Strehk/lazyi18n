@@ -86,7 +86,6 @@ jobs:
         # Update formula
         FORMULA_FILE="Formula/lazyi18n-nightly.rb"
         URL="https://github.com/${{ github.repository }}/releases/download/nightly/lazyi18n-${VERSION}.tar.gz"
-             https://github.com/${{ github.repository }}/releases/download/nightly-0.1.1.dev20251217141121/lazyi18n-0.1.1.dev20251217141121.tar.gz
         
         # Calculate SHA256
         curl -L -o artifact.tar.gz "$URL"
