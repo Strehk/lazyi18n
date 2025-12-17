@@ -149,6 +149,10 @@ class TranslationProject:
             locale_file = self.locale_files[loc]
             if self.writer.write_atomic(nested_data, locale_file.path):
                 self.unsaved_changes.discard(loc)
+                # Remove changes for this locale
+                keys_to_remove = [k for k, v in self.changes.items() if v.locale == loc]
+                for k in keys_to_remove:
+                    del self.changes[k]
             else:
                 all_success = False
 

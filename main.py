@@ -14,7 +14,7 @@ import sys
 
 from textual.app import App, ComposeResult
 from textual import on
-from textual.containers import Horizontal, VerticalScroll
+from textual.containers import Horizontal, VerticalScroll, Container
 from textual.widgets import Header, Static, Tree, Input, Label
 from textual.reactive import reactive
 from textual.binding import Binding
@@ -304,16 +304,16 @@ class NewKeyScreen(Screen):
         
         # Validate key
         if not key:
-            self.error_label.update(" Key cannot be empty")
+            self.error_label.update("[red][/] Key cannot be empty")
             return
         
         if not all(c.isalnum() or c in "._-" for c in key):
-            self.error_label.update(" Key can only contain letters, numbers, dots, hyphens, and underscores")
+            self.error_label.update("[red][/] Key can only contain letters, numbers, dots, hyphens, and underscores")
             return
         
         # Check if key already exists
         if key in self.project.get_all_keys():
-            self.error_label.update(" Key already exists")
+            self.error_label.update("[red][/] Key already exists")
             return
         
         # Collect values
@@ -325,14 +325,14 @@ class NewKeyScreen(Screen):
                 self.project.set_key_value(locale, key, new_value)
         
         if not has_value:
-            self.error_label.update(" At least one translation must be provided")
+            self.error_label.update("[red][/] At least one translation must be provided")
             return
         
         # Notify main app to rebuild tree
         if hasattr(self.app, 'tree_pane'):
             self.app.tree_pane.rebuild(self.app.search_buffer if self.app.is_searching else "")
         if hasattr(self.app, 'status_pane'):
-            self.app.status_pane.action = f" Created key: {key}"
+            self.app.status_pane.action = f"[green][/] Created key: {key}"
         
         self.app.pop_screen()
     
@@ -445,7 +445,7 @@ class BulkFillScreen(Screen):
     def action_apply(self) -> None:
         """Apply bulk fill to missing translations."""
         if not self.missing_keys:
-            self.error_label.update(" No missing translations to fill")
+            self.error_label.update("[red][/] No missing translations to fill")
             return
         
         any_value = False
@@ -458,13 +458,13 @@ class BulkFillScreen(Screen):
                 self.project.set_key_value(locale, key, val)
         
         if not any_value:
-            self.error_label.update(" Provide at least one value to apply")
+            self.error_label.update("[red][/] Provide at least one value to apply")
             return
         
         if hasattr(self.app, 'tree_pane'):
             self.app.tree_pane.rebuild(self.app.tree_pane.search_term)
         if hasattr(self.app, 'status_pane'):
-            self.app.status_pane.action = " Bulk applied"
+            self.app.status_pane.action = "[green][/] Bulk applied"
         
         self.app.pop_screen()
     
@@ -552,7 +552,7 @@ class DeleteConfirmScreen(Screen):
         if hasattr(self.app, 'values_pane'):
             self.app.values_pane.selected_key = ""
         if hasattr(self.app, 'status_pane'):
-            self.app.status_pane.action = f" Deleted key: {self.key}"
+            self.app.status_pane.action = f"[green][/] Deleted key: {self.key}"
             self.app.status_pane.update_status()
         
         self.app.pop_screen()
@@ -615,20 +615,20 @@ class TreePane(Static):
             
             # Mark with status: unsaved, gap, or complete
             if has_unsaved:
-                label = f"  {key}"
+                label = f"[yellow][/]  {key}"
             elif has_gap:
-                label = f"  {key}"
+                label = f"[red][/]  {key}"
             else:
-                label = f" {key}"
+                label = f"[green][/] {key}"
             root.add_leaf(label, data=key)
         
         # Build tree with category warnings if any child has gaps
         for category in sorted(categories.keys()):
             category_keys = categories[category]
             category_has_gap = any(k in gaps for k in category_keys)
-            cat_label = f" {category}"
+            cat_label = f"[blue][/] {category}"
             if category_has_gap:
-                cat_label = f"  {cat_label}"
+                cat_label = f"[red][/]  {cat_label}"
             cat_node = root.add(cat_label)
             cat_node.expand()
             for key in sorted(categories[category]):
@@ -639,11 +639,11 @@ class TreePane(Static):
                 
                 # Mark with status: unsaved, gap, or complete
                 if has_unsaved:
-                    label = f"  {label}"
+                    label = f"[yellow][/]  {label}"
                 elif has_gap:
-                    label = f"  {label}"
+                    label = f"[red][/]  {label}"
                 else:
-                    label = f" {label}"
+                    label = f"[green][/] {label}"
                 cat_node.add_leaf(label, data=key)
     
     def rebuild(self, filter_term: str = "") -> None:
@@ -719,13 +719,11 @@ class ValuesPane(Static):
         self.refresh()
 
 
-class StatusPane(Static):
-    """Bottom pane showing status."""
+class StatusDisplay(Static):
+    """Internal widget for displaying status text."""
     
     unsaved: reactive[list] = reactive([])
     action: reactive[str] = reactive("Ready")
-    search_mode: reactive[bool] = reactive(False)
-    search_term: reactive[str] = reactive("")
     
     def __init__(self, project: TranslationProject):
         super().__init__()
@@ -733,12 +731,6 @@ class StatusPane(Static):
     
     def render(self) -> str:
         """Render comprehensive status info."""
-        if self.search_mode:
-            return (
-                f"[bold yellow]🔍 SEARCH:[/] [cyan]{self.search_term}[/]_ \n"
-                f"[dim]ESC cancel | ENTER finish[/]"
-            )
-        
         coverage = self.project.get_coverage()
         gaps = self.project.get_gaps()
         total_keys = len(self.project.get_all_keys())
@@ -776,6 +768,35 @@ class StatusPane(Static):
     def update_status(self) -> None:
         """Update status from project."""
         self.unsaved = self.project.get_unsaved_locales()
+
+
+class StatusPane(Container):
+    """Bottom pane container showing status or search."""
+    
+    def __init__(self, project: TranslationProject):
+        super().__init__()
+        self.project = project
+        self.display = StatusDisplay(project)
+        self.search_input = Input(placeholder="Search keys...", id="search-input")
+        self.search_input.display = False
+        
+        # Proxy properties to display widget for compatibility
+        self._action = "Ready"
+    
+    @property
+    def action(self):
+        return self.display.action
+        
+    @action.setter
+    def action(self, value):
+        self.display.action = value
+        
+    def compose(self) -> ComposeResult:
+        yield self.display
+        yield self.search_input
+        
+    def update_status(self) -> None:
+        self.display.update_status()
 
 
 class LazyI18nApp(App):
@@ -818,6 +839,12 @@ class LazyI18nApp(App):
         padding: 1;
         background: $panel;
     }
+    
+    #search-input {
+        border: none;
+        background: $panel;
+        width: 100%;
+    }
     """
     
     BINDINGS = [
@@ -830,6 +857,7 @@ class LazyI18nApp(App):
         ("n", "new_key", "New Key"),
         ("b", "bulk_fill", "Bulk Fill"),
         ("d", "delete_key", "Delete"),
+        ("escape", "cancel_search", "Cancel Search"),
     ]
     
     def __init__(self, project: TranslationProject):
@@ -883,41 +911,44 @@ class LazyI18nApp(App):
     
     def on_key(self, event) -> None:
         """Handle keyboard input."""
-        # Handle search mode
-        if self.is_searching:
-            if event.key == "escape":
-                # Cancel search
-                self.is_searching = False
-                self.search_buffer = ""
-                self.status_pane.search_mode = False
-                self.tree_pane.clear_filter()
-                return
-            elif event.key == "enter":
-                # Finish search
-                self.is_searching = False
-                self.status_pane.search_mode = False
-                self.status_pane.action = f"Filter: {self.search_buffer or 'none'}"
-                return
-            elif event.key == "backspace":
-                # Delete character
-                self.search_buffer = self.search_buffer[:-1]
-                self.status_pane.search_term = self.search_buffer
-                self.tree_pane.rebuild(self.search_buffer)
-                return
-            elif len(event.key) == 1 and event.key.isprintable():
-                # Add character
-                self.search_buffer += event.key
-                self.status_pane.search_term = self.search_buffer
-                self.tree_pane.rebuild(self.search_buffer)
-                return
-
+        # Preserve Enter for Textual defaults; use 'e' to edit
+        # Only trigger edit if we are NOT searching (Input widget handles its own keys)
+        if not self.is_searching and event.key == "e" and self.values_pane.selected_key:
+            self.action_edit()
+    
+    @on(Input.Changed, "#search-input")
+    def on_search_changed(self, event: Input.Changed) -> None:
+        """Handle search input changes."""
+        self.search_buffer = event.value
+        self.tree_pane.rebuild(self.search_buffer)
+    
+    @on(Input.Submitted, "#search-input")
+    def on_search_submitted(self, event: Input.Submitted) -> None:
+        """Handle search submission."""
+        self.is_searching = False
+        self.status_pane.search_input.display = False
+        self.status_pane.display.display = True
+        self.status_pane.action = f"Filter: {self.search_buffer or 'none'}"
+        # Focus tree to allow navigation
+        self.set_focus(self.tree_pane)
     
     def action_search(self) -> None:
         """Enter search mode."""
         self.is_searching = True
-        self.search_buffer = ""
-        self.status_pane.search_mode = True
-        self.status_pane.search_term = ""
+        self.status_pane.display.display = False
+        self.status_pane.search_input.display = True
+        self.status_pane.search_input.value = self.search_buffer
+        self.set_focus(self.status_pane.search_input)
+        
+    def action_cancel_search(self) -> None:
+        """Cancel search mode."""
+        if self.is_searching:
+            self.is_searching = False
+            self.search_buffer = ""
+            self.status_pane.search_input.display = False
+            self.status_pane.display.display = True
+            self.tree_pane.clear_filter()
+            self.set_focus(self.tree_pane)
     
     def action_edit(self) -> None:
         """Edit the selected key."""
@@ -940,24 +971,24 @@ class LazyI18nApp(App):
     def action_save(self) -> None:
         """Save changes to disk and refresh UI."""
         if self.project.save():
-            self.status_pane.action = " Saved to disk"
+            self.status_pane.action = "[green][/] Saved to disk"
             self.status_pane.update_status()
             # Rebuild tree to clear pencil indicators since everything is now saved
             self.tree_pane.rebuild(self.tree_pane.search_term)
             # Refresh values pane
             self.values_pane.refresh()
         else:
-            self.status_pane.action = " Save failed"
+            self.status_pane.action = "[red][/] Save failed"
     
     def action_reload(self) -> None:
         """Reload from disk."""
         if self.project.reload():
-            self.status_pane.action = " Reloaded"
+            self.status_pane.action = "[green][/] Reloaded"
             self.status_pane.update_status()
             self.tree_pane.rebuild(self.tree_pane.search_term)
             self.values_pane.selected_key = ""
         else:
-            self.status_pane.action = " Reload failed"
+            self.status_pane.action = "[red][/] Reload failed"
     
     def action_help(self) -> None:
         """Show help modal."""
