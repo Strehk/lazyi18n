@@ -125,7 +125,9 @@ class LazyI18nApp(App):
             if self.initial_key in all_keys:
                 self.push_screen(EditScreen(self.project, self.initial_key))
             else:
-                self.push_screen(NewKeyScreen(self.project, initial_key=self.initial_key))
+                self.push_screen(
+                    NewKeyScreen(self.project, initial_key=self.initial_key)
+                )
 
     @on(Tree.NodeSelected)
     def on_tree_select(self, event: Tree.NodeSelected) -> None:
