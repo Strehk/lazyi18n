@@ -1,3 +1,5 @@
+import os
+import subprocess
 from pathlib import Path
 
 from textual import on
@@ -99,15 +101,18 @@ class LazyI18nApp(App):
         ("/", "search", "Search"),
         ("n", "new_key", "New Key"),
         ("d", "delete_key", "Delete"),
+        ("D", "duplicate_key", "Duplicate Key"),
         ("e", "toggle_staged", "Toggle Edited Filter"),
         ("m", "toggle_missing", "Toggle Missing Filter"),
         ("t", "translate_key", "Translate Key"),
         ("a", "llm_translate", "LLM Translate"),
         ("T", "translate_all_missing", "Translate All Missing"),
         ("escape", "cancel_search", "Cancel Search"),
+        ("ctrl+l", "clear_search", "Clear Search"),
         ("y", "yank_key", "Copy Key"),
         ("z", "collapse_all", "Collapse All"),
         ("Z", "expand_all", "Expand All"),
+        ("o", "open_in_editor", "Open in Editor"),
     ]
 
     def __init__(self, project: TranslationProject, initial_key: str | None = None):
@@ -691,6 +696,67 @@ class LazyI18nApp(App):
                     node.expand()
             self.status_pane.action = "[$secondary]ℹ[/] Expanded all branches"
             self.status_pane.update_status()
+
+    def action_duplicate_key(self) -> None:
+        """Duplicate the selected key with all its values."""
+        if self.is_searching:
+            return
+
+        key = self.values_pane.selected_key
+        if not key:
+            self.status_pane.action = "[$warning]⚠[/] No key selected"
+            self.status_pane.update_status()
+            return
+
+        # Get all values for the current key
+        initial_values = {}
+        for locale in self.project.get_locales():
+            value = self.project.get_key_value(locale, key)
+            if value:
+                initial_values[locale] = value
+
+        # Open new key screen with values pre-filled
+        self.push_screen(
+            NewKeyScreen(self.project, initial_key=f"{key}_copy", initial_values=initial_values)
+        )
+
+    def action_clear_search(self) -> None:
+        """Clear search filter (Ctrl+L)."""
+        self.search_buffer = ""
+        self.is_searching = False
+        self.status_pane.search_input.display = False
+        self.status_pane.status_display.display = True
+        self.status_pane.action = "[$secondary]ℹ[/] Search cleared"
+        self.tree_pane.clear_filter()
+        self.status_pane.update_status()
+        self.set_focus(self.tree_pane)
+
+    def action_open_in_editor(self) -> None:
+        """Open translation files in $EDITOR."""
+        if self.is_searching:
+            return
+
+        editor = os.environ.get("EDITOR", "vim")
+
+        # Get all locale files
+        files = []
+        for locale in self.project.get_locales():
+            locale_file = self.project.get_locale_file(locale)
+            if locale_file and locale_file.exists():
+                files.append(str(locale_file))
+
+        if not files:
+            self.status_pane.action = "[$warning]⚠[/] No translation files found"
+            self.status_pane.update_status()
+            return
+
+        # Suspend the TUI and open editor
+        with self.suspend():
+            subprocess.run([editor] + files)
+
+        # Prompt for reload after editor closes
+        self.status_pane.action = "[$secondary]ℹ[/] Editor closed. Press 'r' to reload."
+        self.status_pane.update_status()
 
 
 class LazyI18nTUI:

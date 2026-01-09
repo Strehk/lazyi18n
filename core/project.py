@@ -155,6 +155,12 @@ class TranslationProject:
         """Get list of all loaded locales."""
         return sorted(self.locale_files.keys())
 
+    def get_locale_file(self, locale: str):
+        """Get the file path for a specific locale."""
+        if locale in self.locale_files:
+            return self.locale_files[locale].path
+        return None
+
     def get_changed_keys(self) -> Set[str]:
         """Get set of keys that have unsaved changes."""
         return {change.key for change in self.changes.values()}

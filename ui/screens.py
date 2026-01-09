@@ -59,7 +59,8 @@ class HelpScreen(Screen):
             help_lines = [
                 "[bold]Navigation[/]",
                 "  󰁅/󰁝    Move selection in left tree",
-                "  /      Search/filter keys (type to filter; Esc cancels; Enter accepts)",
+                "  /      Search/filter keys (Esc cancels; Enter accepts)",
+                "  Ctrl+L Clear search filter",
                 "  e      Toggle edited keys filter",
                 "  m      Toggle missing translations filter",
                 "  z      Collapse all tree branches",
@@ -67,25 +68,26 @@ class HelpScreen(Screen):
                 "",
                 "[bold]Editing[/]",
                 "  Space  Edit selected key (or toggle branch)",
+                "  n      Create a new key with per-locale values",
+                "  D      Duplicate selected key (copy with all values)",
                 "  d      Delete selected key (with confirmation)",
                 "  y      Copy key path to clipboard",
-                "  In editor: Tab/Enter next field; Ctrl+S save; Esc cancel; empty value deletes",
-                "  Live preview updates in right pane while typing",
-                "",
-                "[bold]Keys[/]",
-                "  n      Create a new key with per-locale values",
+                "  o      Open translation files in $EDITOR",
+                "  In editor: Tab/Enter next field; Ctrl+S save; Esc cancel",
                 "",
                 "[bold]Translation[/]",
                 "  t      Google Translate selected key (fills missing locales)",
                 "  a      LLM Translate selected key (OpenAI)",
-                "  T      Google Translate all missing keys (stages changes)",
-                "  Note: Configure API keys via CLI (see README)",
+                "  T      Google Translate all missing keys",
                 "  [$warning]⚠[/] Interpolation warnings show missing/extra {variables}",
                 "",
                 "[bold]Project[/]",
                 "  s      Save all changes to disk",
                 "  r      Reload translations from disk",
                 "  q      Quit",
+                "",
+                "[bold]Config[/]",
+                "  auto_save=true  Auto-save after each edit",
             ]
             yield Label("\n".join(help_lines), id="help-body")
             yield Label("Press Esc to close", id="help-footer")
@@ -203,6 +205,12 @@ class EditScreen(Screen):
                 # Empty field deletes the translation for that locale
                 self.project.delete_key_value(locale, self.key)
 
+        # Check for auto-save option
+        if hasattr(self.app, "config") and self.app.config.get("auto_save", False):
+            self.project.save()
+            if hasattr(self.app, "status_pane") and self.app.status_pane:
+                self.app.status_pane.action = "[$success]✓[/] Auto-saved to disk"
+
         # Update the values pane and tree immediately
         if hasattr(self.app, "values_pane") and self.app.values_pane:
             self.app.values_pane.clear_preview()
@@ -288,10 +296,11 @@ class NewKeyScreen(Screen):
     }
     """
 
-    def __init__(self, project: TranslationProject, initial_key: str | None = None):
+    def __init__(self, project: TranslationProject, initial_key: str | None = None, initial_values: dict | None = None):
         super().__init__()
         self.project = project
         self.initial_key = initial_key
+        self.initial_values = initial_values or {}
         self.key_input = None
         self.inputs = {}
         self.error_label = None
@@ -311,7 +320,15 @@ class NewKeyScreen(Screen):
 
             for locale in self.project.get_locales():
                 yield Label(f"{locale}:", classes="locale-label")
-                input_widget = Input(placeholder=f"Enter {locale} translation...")
+                # Pre-fill with initial value if provided (for duplicate)
+                initial_value = self.initial_values.get(locale, "")
+                # Handle list values by joining them
+                if isinstance(initial_value, list):
+                    initial_value = ", ".join(str(v) for v in initial_value)
+                input_widget = Input(
+                    value=str(initial_value) if initial_value else "",
+                    placeholder=f"Enter {locale} translation..."
+                )
                 # Track inputs by locale via self.inputs dict
                 self.inputs[locale] = input_widget
                 yield input_widget

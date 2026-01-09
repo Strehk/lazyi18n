@@ -182,7 +182,13 @@ class TreePane(Static):
             category_has_gap = any(k in gaps for k in category_keys)
             category_has_interp = any(k in interpolation_issues for k in category_keys)
             key_count = len(category_keys)
-            cat_label = f"[{self.app.current_theme.secondary}]{ICON_FOLDER}[/] {category} [dim]({key_count})[/]"
+
+            # Calculate coverage for this category
+            complete_keys = sum(1 for k in category_keys if k not in gaps)
+            coverage_pct = (complete_keys / key_count * 100) if key_count > 0 else 100
+            coverage_color = self.app.current_theme.success if coverage_pct == 100 else self.app.current_theme.warning if coverage_pct >= 80 else self.app.current_theme.error
+
+            cat_label = f"[{self.app.current_theme.secondary}]{ICON_FOLDER}[/] {category} [dim]({key_count})[/] [{coverage_color}]{coverage_pct:.0f}%[/]"
             if category_has_gap:
                 cat_label = f"[{self.app.current_theme.error}]{ICON_WARNING}[/] {cat_label}"
             elif category_has_interp:
@@ -409,7 +415,7 @@ class StatusDisplay(Static):
 
         # Key hints (compact)
         lines.append("")
-        lines.append("[dim]e:edit /:search n:new y:copy z/Z:fold s:save q:quit[/]")
+        lines.append("[dim]/:search n:new D:dup y:copy o:edit z/Z:fold s:save ?:help[/]")
 
         return "\n".join(lines)
 
