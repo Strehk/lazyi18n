@@ -369,18 +369,18 @@ class NewKeyScreen(Screen):
 
         # Validate key
         if not key:
-            self.error_label.update(f"[$error][/] Key cannot be empty")
+            self.error_label.update("[$error][/] Key cannot be empty")
             return
 
         if not all(c.isalnum() or c in "._-" for c in key):
             self.error_label.update(
-                f"[$error][/] Key can only contain letters, numbers, dots, hyphens, and underscores"
+                "[$error][/] Key can only contain letters, numbers, dots, hyphens, and underscores"
             )
             return
 
         # Check if key already exists
         if key in self.project.get_all_keys():
-            self.error_label.update(f"[$error][/] Key already exists")
+            self.error_label.update("[$error][/] Key already exists")
             return
 
         # Collect values
@@ -393,7 +393,7 @@ class NewKeyScreen(Screen):
 
         if not has_value:
             self.error_label.update(
-                f"[$error][/] At least one translation must be provided"
+                "[$error][/] At least one translation must be provided"
             )
             return
 
@@ -791,7 +791,7 @@ class QuitConfirmScreen(Screen):
                 id="quit-warning",
             )
             yield Label(
-                f"[bold $error]Enter[/] Quit without saving | [Esc] Cancel",
+                "[bold $error]Enter[/] Quit without saving | [Esc] Cancel",
                 id="quit-help",
             )
 
@@ -856,7 +856,7 @@ class ReloadConfirmScreen(Screen):
                 id="reload-warning",
             )
             yield Label(
-                f"[bold $error]Enter[/] Reload and discard | [Esc] Cancel",
+                "[bold $error]Enter[/] Reload and discard | [Esc] Cancel",
                 id="reload-help",
             )
 

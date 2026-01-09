@@ -361,7 +361,7 @@ class LazyI18nApp(App):
             return
 
         if not self.values_pane.selected_key:
-            self.status_pane.action = f"[$warning]⚠[/] No key selected"
+            self.status_pane.action = "[$warning]⚠[/] No key selected"
             self.status_pane.update_status()
             return
 
@@ -404,7 +404,7 @@ class LazyI18nApp(App):
             return
 
         if not self.values_pane.selected_key:
-            self.status_pane.action = f"[$warning]⚠[/] No key selected"
+            self.status_pane.action = "[$warning]⚠[/] No key selected"
             self.status_pane.update_status()
             return
 
@@ -541,7 +541,7 @@ class LazyI18nApp(App):
 
         if not translations:
             progress_screen.write_log(
-                f"[bold yellow]No translations returned.[/bold yellow]"
+                "[bold yellow]No translations returned.[/bold yellow]"
             )
             progress_screen.set_done()
 
@@ -577,11 +577,11 @@ class LazyI18nApp(App):
 
         gaps = self.project.get_gaps()
         if not gaps:
-            self.status_pane.action = f"[$secondary]ℹ[/] No missing translations"
+            self.status_pane.action = "[$secondary]ℹ[/] No missing translations"
             self.status_pane.update_status()
             return
 
-        self.status_pane.action = f"[$warning]⏳[/] Translating all missing keys..."
+        self.status_pane.action = "[$warning]⏳[/] Translating all missing keys..."
         self.status_pane.update_status()
 
         # Run translation in background worker
@@ -605,7 +605,7 @@ class LazyI18nApp(App):
             return
 
         if not translations:
-            self.status_pane.action = f"[$secondary]ℹ[/] No translations generated"
+            self.status_pane.action = "[$secondary]ℹ[/] No translations generated"
             self.status_pane.update_status()
             return
 
@@ -636,7 +636,7 @@ class LazyI18nApp(App):
         if self.is_searching:
             return
         if self.project.save():
-            self.status_pane.action = f"[$success][/] Saved to disk"
+            self.status_pane.action = "[$success][/] Saved to disk"
             self.status_pane.update_status()
             # Rebuild tree to clear pencil indicators since everything is now saved
             self.tree_pane.rebuild(
@@ -645,19 +645,19 @@ class LazyI18nApp(App):
             # Refresh values pane
             self.values_pane.refresh()
         else:
-            self.status_pane.action = f"[$error][/] Save failed"
+            self.status_pane.action = "[$error][/] Save failed"
 
     def perform_reload(self) -> None:
         """Execute the reload operation."""
         if self.project.reload():
-            self.status_pane.action = f"[$success][/] Reloaded"
+            self.status_pane.action = "[$success][/] Reloaded"
             self.status_pane.update_status()
             self.tree_pane.rebuild(
                 self.search_buffer, self.show_staged, self.show_missing
             )
             self.values_pane.selected_key = ""
         else:
-            self.status_pane.action = f"[$error][/] Reload failed"
+            self.status_pane.action = "[$error][/] Reload failed"
 
     def action_reload(self) -> None:
         """Reload from disk."""

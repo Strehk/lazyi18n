@@ -249,7 +249,7 @@ class ValuesPane(Static):
         """Render values for selected key."""
         if not self.selected_key:
             return (
-                f"[$primary] #                           ###   #    #####         \n"
+                "[$primary] #                           ###   #    #####         \n"
                 " #         ##   ###### #   #  #   ##   #     # #    # \n"
                 " #        #  #      #   # #   #  # #   #     # ##   # \n"
                 " #       #    #    #     #    #    #    #####  # #  # \n"
@@ -391,9 +391,9 @@ class StatusDisplay(Static):
         if self.show_staged or self.show_missing:
             filters = []
             if self.show_staged:
-                filters.append(f"[$warning]Edited (e)[/]")
+                filters.append("[$warning]Edited (e)[/]")
             if self.show_missing:
-                filters.append(f"[$error]Missing (m)[/]")
+                filters.append("[$error]Missing (m)[/]")
             lines.append(f"  [bold]Filters:[/] {', '.join(filters)}")
             lines.append("")
 
@@ -408,7 +408,7 @@ class StatusDisplay(Static):
             )
             lines.append(f"      Locales: {', '.join(self.unsaved)}")
         else:
-            lines.append(f"  [$success]●[/] All changes saved")
+            lines.append("  [$success]●[/] All changes saved")
         # Last Action
         if self.action != "Ready":
             lines.append(f"  [$secondary]ℹ[/] {self.action}")
