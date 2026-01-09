@@ -65,6 +65,7 @@ class HelpScreen(Screen):
                 "  m      Toggle missing translations filter",
                 "  z      Collapse all tree branches",
                 "  Z      Expand all tree branches",
+                "  '      Show recent keys history",
                 "",
                 "[bold]Editing[/]",
                 "  Space  Edit selected key (or toggle branch)",
@@ -73,7 +74,12 @@ class HelpScreen(Screen):
                 "  d      Delete selected key (with confirmation)",
                 "  y      Copy key path to clipboard",
                 "  o      Open translation files in $EDITOR",
-                "  In editor: Tab/Enter next field; Ctrl+S save; Esc cancel",
+                "",
+                "[bold]In Edit Modal[/]",
+                "  Tab/Enter  Move to next field",
+                "  J          Jump to source locale (en)",
+                "  Ctrl+S     Save changes",
+                "  Esc        Cancel editing",
                 "",
                 "[bold]Translation[/]",
                 "  t      Google Translate selected key (fills missing locales)",
@@ -87,7 +93,7 @@ class HelpScreen(Screen):
                 "  q      Quit",
                 "",
                 "[bold]Config[/]",
-                "  auto_save=true  Auto-save after each edit",
+                "  auto_save: true  Auto-save after each edit",
             ]
             yield Label("\n".join(help_lines), id="help-body")
             yield Label("Press Esc to close", id="help-footer")
@@ -102,6 +108,7 @@ class EditScreen(Screen):
     BINDINGS = [
         ("escape", "cancel", "Cancel"),
         ("ctrl+s", "save", "Save"),
+        ("J", "jump_source", "Jump to Source"),
     ]
 
     CSS = """
@@ -191,6 +198,13 @@ class EditScreen(Screen):
                 return
             except ValueError:
                 pass
+
+    def action_jump_source(self) -> None:
+        """Jump to source locale input field."""
+        locales = self.project.get_locales()
+        source_locale = "en" if "en" in locales else (locales[0] if locales else None)
+        if source_locale and source_locale in self.inputs:
+            self.set_focus(self.inputs[source_locale])
 
     def action_save(self) -> None:
         """Save all changes to memory and close."""
@@ -853,6 +867,115 @@ class ReloadConfirmScreen(Screen):
 
     def action_cancel(self) -> None:
         """Cancel reload."""
+        self.app.pop_screen()
+
+
+class RecentKeysScreen(Screen):
+    """Modal screen for quickly jumping to recently viewed keys."""
+
+    BINDINGS = [
+        ("escape", "close", "Close"),
+        ("j", "next", "Next"),
+        ("down", "next", "Next"),
+        ("k", "prev", "Previous"),
+        ("up", "prev", "Previous"),
+        ("enter", "select", "Select"),
+    ]
+
+    CSS = """
+    RecentKeysScreen {
+        align: center middle;
+    }
+
+    #recent-dialog {
+        width: 70;
+        height: auto;
+        max-height: 70%;
+        border: heavy $accent;
+        background: $surface;
+        padding: 1 2;
+    }
+
+    #recent-title {
+        text-align: center;
+        color: $accent;
+        text-style: bold;
+        margin-bottom: 1;
+    }
+
+    .key-item {
+        padding: 0 1;
+    }
+
+    .key-item.selected {
+        background: $accent;
+        color: $surface;
+    }
+
+    #recent-help {
+        dock: bottom;
+        text-align: center;
+        color: $text-muted;
+        margin-top: 1;
+    }
+
+    #empty-message {
+        text-align: center;
+        color: $text-muted;
+        margin: 2 0;
+    }
+    """
+
+    def __init__(self, recent_keys: list[str], on_select: callable):
+        super().__init__()
+        self.recent_keys = recent_keys
+        self.on_select = on_select
+        self.selected_index = 0
+        self.key_labels = []
+
+    def compose(self) -> ComposeResult:
+        with VerticalScroll(id="recent-dialog"):
+            yield Label("Recent Keys", id="recent-title")
+
+            if not self.recent_keys:
+                yield Label("No recent keys yet", id="empty-message")
+            else:
+                for i, key in enumerate(self.recent_keys[:15]):  # Show max 15
+                    label = Label(f"  {key}", classes="key-item")
+                    if i == 0:
+                        label.add_class("selected")
+                    self.key_labels.append(label)
+                    yield label
+
+            yield Label("[j/k] Navigate | [Enter] Select | [Esc] Close", id="recent-help")
+
+    def action_next(self) -> None:
+        """Move selection down."""
+        if not self.key_labels:
+            return
+        self.key_labels[self.selected_index].remove_class("selected")
+        self.selected_index = (self.selected_index + 1) % len(self.key_labels)
+        self.key_labels[self.selected_index].add_class("selected")
+
+    def action_prev(self) -> None:
+        """Move selection up."""
+        if not self.key_labels:
+            return
+        self.key_labels[self.selected_index].remove_class("selected")
+        self.selected_index = (self.selected_index - 1) % len(self.key_labels)
+        self.key_labels[self.selected_index].add_class("selected")
+
+    def action_select(self) -> None:
+        """Select current key and close."""
+        if self.recent_keys and self.selected_index < len(self.recent_keys):
+            key = self.recent_keys[self.selected_index]
+            self.app.pop_screen()
+            self.on_select(key)
+        else:
+            self.app.pop_screen()
+
+    def action_close(self) -> None:
+        """Close without selecting."""
         self.app.pop_screen()
 
 

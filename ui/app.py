@@ -25,6 +25,7 @@ from ui.screens import (
     LLMConfirmScreen,
     LLMMissingKeyScreen,
     LLMProgressScreen,
+    RecentKeysScreen,
 )
 
 
@@ -113,6 +114,7 @@ class LazyI18nApp(App):
         ("z", "collapse_all", "Collapse All"),
         ("Z", "expand_all", "Expand All"),
         ("o", "open_in_editor", "Open in Editor"),
+        ("'", "recent_keys", "Recent Keys"),
     ]
 
     def __init__(self, project: TranslationProject, initial_key: str | None = None):
@@ -126,6 +128,8 @@ class LazyI18nApp(App):
         self.is_searching = False
         self.show_staged = False
         self.show_missing = False
+        self.recent_keys: list[str] = []  # Track recently viewed keys
+        self.max_recent_keys = 20  # Maximum number of recent keys to track
 
         # Initialize config and translator
         self.config = Config(Path(project.directory))
@@ -239,6 +243,8 @@ class LazyI18nApp(App):
             self.values_pane.selected_key = key
             # Force refresh to ensure right pane updates during navigation
             self.values_pane.refresh()
+            # Track this key in recent history
+            self._add_to_recent_keys(key)
 
             # Update tree cursor style based on key status
             gaps = self.project.get_gaps()
@@ -248,6 +254,17 @@ class LazyI18nApp(App):
                 tree.add_class("status-error")
             elif key in changed_keys:
                 tree.add_class("status-warning")
+
+    def _add_to_recent_keys(self, key: str) -> None:
+        """Add a key to the recent keys list."""
+        # Remove if already in list (will re-add at front)
+        if key in self.recent_keys:
+            self.recent_keys.remove(key)
+        # Add to front
+        self.recent_keys.insert(0, key)
+        # Trim to max size
+        if len(self.recent_keys) > self.max_recent_keys:
+            self.recent_keys = self.recent_keys[:self.max_recent_keys]
 
     @on(Input.Changed, "#search-input")
     def on_search_changed(self, event: Input.Changed) -> None:
@@ -757,6 +774,20 @@ class LazyI18nApp(App):
         # Prompt for reload after editor closes
         self.status_pane.action = "[$secondary]ℹ[/] Editor closed. Press 'r' to reload."
         self.status_pane.update_status()
+
+    def action_recent_keys(self) -> None:
+        """Show recent keys history for quick navigation."""
+        if self.is_searching:
+            return
+
+        def on_select(key: str):
+            """Handle selection of a recent key."""
+            self.values_pane.selected_key = key
+            self.values_pane.refresh()
+            self.status_pane.action = f"[$secondary]ℹ[/] Jumped to: {key}"
+            self.status_pane.update_status()
+
+        self.push_screen(RecentKeysScreen(self.recent_keys, on_select))
 
 
 class LazyI18nTUI:
