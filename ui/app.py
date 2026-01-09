@@ -105,6 +105,9 @@ class LazyI18nApp(App):
         ("a", "llm_translate", "LLM Translate"),
         ("T", "translate_all_missing", "Translate All Missing"),
         ("escape", "cancel_search", "Cancel Search"),
+        ("y", "yank_key", "Copy Key"),
+        ("z", "collapse_all", "Collapse All"),
+        ("Z", "expand_all", "Expand All"),
     ]
 
     def __init__(self, project: TranslationProject, initial_key: str | None = None):
@@ -649,6 +652,45 @@ class LazyI18nApp(App):
         if self.is_searching:
             return
         self.push_screen(HelpScreen())
+
+    def action_yank_key(self) -> None:
+        """Copy the selected key path to clipboard."""
+        if self.is_searching:
+            return
+
+        key = self.values_pane.selected_key
+        if not key:
+            self.status_pane.action = "[$warning]⚠[/] No key selected"
+            self.status_pane.update_status()
+            return
+
+        self.copy_to_clipboard(key)
+        self.status_pane.action = f"[$success]✓[/] Copied: {key}"
+        self.status_pane.update_status()
+
+    def action_collapse_all(self) -> None:
+        """Collapse all tree branches."""
+        if self.is_searching:
+            return
+
+        if self.tree_pane and self.tree_pane._tree:
+            for node in self.tree_pane._tree.root.children:
+                if node.allow_expand:
+                    node.collapse()
+            self.status_pane.action = "[$secondary]ℹ[/] Collapsed all branches"
+            self.status_pane.update_status()
+
+    def action_expand_all(self) -> None:
+        """Expand all tree branches."""
+        if self.is_searching:
+            return
+
+        if self.tree_pane and self.tree_pane._tree:
+            for node in self.tree_pane._tree.root.children:
+                if node.allow_expand:
+                    node.expand()
+            self.status_pane.action = "[$secondary]ℹ[/] Expanded all branches"
+            self.status_pane.update_status()
 
 
 class LazyI18nTUI:

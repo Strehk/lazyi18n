@@ -1,3 +1,5 @@
+import re
+
 from textual.app import ComposeResult
 from textual.containers import Container
 from textual.reactive import reactive
@@ -5,6 +7,62 @@ from textual.widgets import Input, Static, Tree
 from textual.binding import Binding
 
 from core.project import TranslationProject
+from ui.icons import ICON_CHECK, ICON_CROSS, ICON_WARNING, ICON_PENCIL, ICON_FOLDER
+
+
+def extract_interpolations(text: str | list | None) -> set[str]:
+    """Extract {variable} and {{variable}} interpolation patterns from text."""
+    if not text:
+        return set()
+    # Handle arrays (i18next supports arrays for plural forms, lists, etc.)
+    if isinstance(text, list):
+        result = set()
+        for item in text:
+            if isinstance(item, str):
+                result.update(extract_interpolations(item))
+        return result
+    if not isinstance(text, str):
+        return set()
+    # Match {variable}, { variable }, {{variable}}, {{ variable }}, etc.
+    # Uses a pattern that matches 1 or 2 braces on each side
+    pattern = r"\{?\{\s*(\w+)\s*\}\}?"
+    return set(re.findall(pattern, text))
+
+
+def get_interpolation_issues(project: "TranslationProject") -> dict[str, list[str]]:
+    """Get keys that have interpolation variable mismatches.
+
+    Returns a dict mapping key -> list of locales with issues.
+    """
+    issues = {}
+    locales = project.get_locales()
+    if not locales:
+        return issues
+
+    source_locale = "en" if "en" in locales else locales[0]
+
+    for key in project.get_all_keys():
+        source_value = project.get_key_value(source_locale, key)
+        source_vars = extract_interpolations(source_value)
+
+        if not source_vars:
+            continue
+
+        key_issues = []
+        for locale in locales:
+            if locale == source_locale:
+                continue
+            target_value = project.get_key_value(locale, key)
+            if not target_value:
+                continue
+            target_vars = extract_interpolations(target_value)
+            if source_vars != target_vars:
+                key_issues.append(locale)
+
+        if key_issues:
+            issues[key] = key_issues
+
+    return issues
 
 
 class TranslationTree(Tree):
@@ -50,6 +108,7 @@ class TreePane(Static):
         keys = self.project.get_all_keys()
         unsaved_locales = self.project.get_unsaved_locales()
         changed_keys = self.project.get_changed_keys()
+        interpolation_issues = get_interpolation_issues(self.project)
 
         # Filter keys by search term
         if filter_term:
@@ -103,23 +162,31 @@ class TreePane(Static):
         for key in sorted(top_level_keys):
             has_gap = key in gaps
             has_unsaved = key in changed_keys and unsaved_locales
+            has_interp_issue = key in interpolation_issues
+
+            # Build interpolation warning suffix
+            interp_warning = f" [{self.app.current_theme.warning}]{ICON_WARNING}[/]" if has_interp_issue else ""
 
             # Mark with status: unsaved, gap, or complete
             if has_unsaved:
-                label = f"[{self.app.current_theme.warning}][/]  [bold {self.app.current_theme.warning}]{key}[/]"
+                label = f"[{self.app.current_theme.warning}]{ICON_PENCIL}[/]  [bold {self.app.current_theme.warning}]{key}[/]{interp_warning}"
             elif has_gap:
-                label = f"[{self.app.current_theme.error}][/]  [bold {self.app.current_theme.error}]{key}[/]"
+                label = f"[{self.app.current_theme.error}]{ICON_CROSS}[/]  [bold {self.app.current_theme.error}]{key}[/]{interp_warning}"
             else:
-                label = f"[{self.app.current_theme.success}][/] {key}"
+                label = f"[{self.app.current_theme.success}]{ICON_CHECK}[/] {key}{interp_warning}"
             root.add_leaf(label, data=key)
 
-        # Build tree with category warnings if any child has gaps
+        # Build tree with category warnings if any child has gaps or interpolation issues
         for category in sorted(categories.keys()):
             category_keys = categories[category]
             category_has_gap = any(k in gaps for k in category_keys)
-            cat_label = f"[{self.app.current_theme.secondary}][/] {category}"
+            category_has_interp = any(k in interpolation_issues for k in category_keys)
+            key_count = len(category_keys)
+            cat_label = f"[{self.app.current_theme.secondary}]{ICON_FOLDER}[/] {category} [dim]({key_count})[/]"
             if category_has_gap:
-                cat_label = f"[{self.app.current_theme.error}][/] {cat_label}"
+                cat_label = f"[{self.app.current_theme.error}]{ICON_WARNING}[/] {cat_label}"
+            elif category_has_interp:
+                cat_label = f"[{self.app.current_theme.warning}]{ICON_WARNING}[/] {cat_label}"
             cat_node = root.add(cat_label)
             cat_node.expand()
             for key in sorted(categories[category]):
@@ -127,14 +194,18 @@ class TreePane(Static):
                 has_gap = key in gaps
                 # Show pencil if this key has unsaved changes
                 has_unsaved = key in changed_keys and unsaved_locales
+                has_interp_issue = key in interpolation_issues
+
+                # Build interpolation warning suffix
+                interp_warning = f" [{self.app.current_theme.warning}]{ICON_WARNING}[/]" if has_interp_issue else ""
 
                 # Mark with status: unsaved, gap, or complete
                 if has_unsaved:
-                    label = f"[{self.app.current_theme.warning}][/] [bold {self.app.current_theme.warning}]{label}[/]"
+                    label = f"[{self.app.current_theme.warning}]{ICON_PENCIL}[/] [bold {self.app.current_theme.warning}]{label}[/]{interp_warning}"
                 elif has_gap:
-                    label = f"[{self.app.current_theme.error}][/] [bold {self.app.current_theme.error}]{label}[/]"
+                    label = f"[{self.app.current_theme.error}]{ICON_CROSS}[/] [bold {self.app.current_theme.error}]{label}[/]{interp_warning}"
                 else:
-                    label = f"[{self.app.current_theme.success}][/] {label}"
+                    label = f"[{self.app.current_theme.success}]{ICON_CHECK}[/] {label}{interp_warning}"
                 cat_node.add_leaf(label, data=key)
 
     def rebuild(
@@ -196,16 +267,36 @@ class ValuesPane(Static):
 
         lines = [f"[bold {header_color} reverse] {self.selected_key} [/]\n"]
 
-        for locale in self.project.get_locales():
+        # Determine source locale and extract its variables for comparison
+        locales = self.project.get_locales()
+        source_locale = "en" if "en" in locales else (locales[0] if locales else None)
+        source_value = self.project.get_key_value(source_locale, self.selected_key) if source_locale else None
+        source_vars = extract_interpolations(source_value) if source_value else set()
+
+        for locale in locales:
             # Prefer preview values when editing this key
             if self.preview_key == self.selected_key and locale in self.preview_values:
                 value = self.preview_values.get(locale) or ""
             else:
                 value = self.project.get_key_value(locale, self.selected_key)
+
             if value:
-                lines.append(f"[$success] {locale}[/]: {value}")
+                # Check for missing interpolation variables
+                target_vars = extract_interpolations(value)
+                missing_vars = source_vars - target_vars
+                extra_vars = target_vars - source_vars
+
+                warning = ""
+                if missing_vars and locale != source_locale:
+                    missing_str = ", ".join(sorted(missing_vars))
+                    warning = f" [$warning]{ICON_WARNING} missing: {{{missing_str}}}[/]"
+                elif extra_vars and locale != source_locale:
+                    extra_str = ", ".join(sorted(extra_vars))
+                    warning = f" [$warning]{ICON_WARNING} extra: {{{extra_str}}}[/]"
+
+                lines.append(f"[$success]{ICON_CHECK} {locale}[/]: {value}{warning}")
             else:
-                lines.append(f"[$error reverse]  {locale} [/]: [dim]MISSING[/]")
+                lines.append(f"[$error reverse]{ICON_CROSS} {locale} [/]: [dim]MISSING[/]")
 
         return "\n".join(lines)
 
@@ -241,6 +332,7 @@ class StatusDisplay(Static):
         all_keys = self.project.get_all_keys()
         total_keys = len(all_keys)
         locales = self.project.get_locales()
+        interpolation_issues = get_interpolation_issues(self.project)
 
         # Calculate stats
         fully_translated = total_keys - len(gaps)
@@ -258,8 +350,11 @@ class StatusDisplay(Static):
         lines.append(
             f"  Keys: [$primary]{total_keys}[/] | Locales: [$primary]{len(locales)}[/] ({', '.join(locales)})"
         )
+        interp_info = ""
+        if interpolation_issues:
+            interp_info = f" | [$warning]{ICON_WARNING} {len(interpolation_issues)}[/] var issues"
         lines.append(
-            f"  Fully Translated: [$success]{fully_translated}[/] | Partial: [$warning]{len(gaps)}[/]"
+            f"  Fully Translated: [$success]{fully_translated}[/] | Partial: [$warning]{len(gaps)}[/]{interp_info}"
         )
         lines.append("")
 
@@ -314,7 +409,7 @@ class StatusDisplay(Static):
 
         # Key hints (compact)
         lines.append("")
-        lines.append("[dim]e:edit /:search n:new s:save r:reload q:quit[/]")
+        lines.append("[dim]e:edit /:search n:new y:copy z/Z:fold s:save q:quit[/]")
 
         return "\n".join(lines)
 

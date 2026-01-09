@@ -17,7 +17,7 @@
     }
   },
   "dashboard": {
-    "welcome": "Willkommen, {name}",
+    "welcome": "Willkommen! {name}",
     "settings": "Einstellungen"
   },
   "features": {

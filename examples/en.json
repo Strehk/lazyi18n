@@ -17,7 +17,7 @@
     }
   },
   "dashboard": {
-    "welcome": "Welcome, {name}",
+    "welcome": "Welcome {firstName}",
     "settings": "Settings",
     "notifications": {
       "title": "Notifications",
